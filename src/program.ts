@@ -30,6 +30,7 @@ export const LIFTS: Record<string, Lift> = Object.fromEntries(
     L('db-press', 'Seated DB Shoulder Press', 5, 25, 75),
     L('pullup', 'Pull-up', 5, 0, 90),
     L('pulldown', 'Lat Pulldown', 5, 80, 75),
+    L('close-pulldown', 'Close-Grip Pulldown', 5, 80, 75),
     L('cable-row', 'Seated Cable Row', 5, 80, 75),
     L('leg-press', 'Leg Press', 10, 180, 90),
     L('split-squat', 'Bulgarian Split Squat', 5, 20, 75),
@@ -83,7 +84,7 @@ export const PROGRAMS: Program[] = [
       {
         id: 'upper-b',
         name: 'Upper B',
-        slots: [S('incline-db', 4, 8, 12), S('pullup', 4, 5, 10), S('cable-row', 3, 8, 12), S('db-press', 3, 8, 12), S('curl', 3, 8, 12), S('face-pull', 3, 12, 20)],
+        slots: [S('incline-db', 4, 8, 12), S('close-pulldown', 4, 6, 10), S('cable-row', 3, 8, 12), S('db-press', 3, 8, 12), S('curl', 3, 8, 12), S('face-pull', 3, 12, 20)],
       },
       {
         id: 'lower-b',
@@ -105,7 +106,7 @@ export const PROGRAMS: Program[] = [
       {
         id: 'fb-b',
         name: 'Day B',
-        slots: [S('deadlift', 3, 3, 6), S('ohp', 3, 6, 10), S('pullup', 3, 5, 10), S('split-squat', 2, 8, 12), S('curl', 2, 8, 12)],
+        slots: [S('deadlift', 3, 3, 6), S('ohp', 3, 6, 10), S('pulldown', 3, 6, 10), S('split-squat', 2, 8, 12), S('curl', 2, 8, 12)],
       },
       {
         id: 'fb-c',

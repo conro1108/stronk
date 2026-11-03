@@ -100,6 +100,13 @@ export const FORMS: Record<string, Form> = {
     props: [{ line: [34, 73, 56, 73] }, { line: [45, 73, 45, 90] }, { dot: [62, 65] }, { cable: [52, -6] }, { db: true }],
     cues: ['Thighs locked under the pad, slight lean back', 'Pull the bar to your upper chest', 'Lead with elbows, not hands'],
   },
+  'close-pulldown': {
+    a: { P: [45, 70], S: [41, 44], A: [66, 90], H: [50, 17] },
+    b: { P: [45, 70], S: [42, 44], A: [66, 90], H: [50, 46] },
+    e: -1,
+    props: [{ line: [34, 73, 56, 73] }, { line: [45, 73, 45, 90] }, { dot: [62, 65] }, { cable: [50, -6] }, { db: true }],
+    cues: ['V-handle or narrow neutral grip', 'Lean back a little, pull the handle to your sternum', 'Elbows drive down and back past your ribs'],
+  },
   'cable-row': {
     a: { P: [32, 74], S: [35, 48], A: [72, 80], H: [61, 50] },
     b: { P: [32, 74], S: [33, 48], A: [72, 80], H: [44, 60] },

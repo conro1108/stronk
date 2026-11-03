@@ -1,8 +1,9 @@
 // What to lift today. Pure: given a slot and the history, propose weight and
 // reps per set. Double progression — beat last time's reps at the same weight
 // until every set hits the top of the range, then add weight and drop to the
-// bottom. Two misses in a row at one weight resets 10%. If the lift was last
-// done in a different rep range (same lift, other workout), scale from e1RM.
+// bottom. Two misses in a row at one weight resets 10%. Progression follows
+// the lift's history in this rep range, so a lift on two days in two ranges
+// climbs separately; with no history in this range, scale from e1RM.
 
 import { liftInfo, type Slot } from './program';
 
@@ -53,14 +54,16 @@ export function target(slot: Slot, history: Session[], unit: Unit): Target {
     return { w, reps: flat(min), kind: 'new', note: 'First time — adjust to something you could do for a couple more.' };
   }
 
-  const last = past[0].log;
-  const W = topWeight(last.sets);
-
-  if (last.reps[0] !== min || last.reps[1] !== max) {
-    const best = Math.max(...last.sets.map(e1rm));
+  const same = past.filter((p) => p.log.reps[0] === min && p.log.reps[1] === max);
+  if (!same.length) {
+    const other = past[0].log;
+    const best = Math.max(...other.sets.map(e1rm));
     const w = floorTo(best / (1 + (min + 1) / 30), step(unit));
-    return { w, reps: flat(min), kind: 'scaled', note: `Scaled from ${fmtW(W)} × ${fmtReps(last.sets)} at ${last.reps[0]}–${last.reps[1]}.` };
+    return { w, reps: flat(min), kind: 'scaled', note: `Scaled from ${fmtW(topWeight(other.sets))} × ${fmtReps(other.sets)} at ${other.reps[0]}–${other.reps[1]}.` };
   }
+
+  const last = same[0].log;
+  const W = topWeight(last.sets);
 
   const work = last.sets.filter((s) => s.w >= W);
   if (work.length >= n && work.every((s) => s.r >= max)) {
@@ -68,7 +71,7 @@ export function target(slot: Slot, history: Session[], unit: Unit): Target {
   }
 
   const missed = (l: LiftLog) => l.sets.length < n || l.sets.some((s) => s.r < min);
-  const prev = past[1]?.log;
+  const prev = same[1]?.log;
   if (missed(last) && prev && topWeight(prev.sets) === W && missed(prev)) {
     return { w: floorTo(W * 0.9, step(unit)), reps: flat(min), kind: 'deload', note: `Stalled twice at ${fmtW(W)} — back off 10% and build again.` };
   }

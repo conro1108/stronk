@@ -22,6 +22,9 @@ describe('target', () => {
   it('deloads after two misses at one weight', () => {
     expect(target(bench, hist(sess(135, [5, 4, 4]), sess(135, [5, 4, 3])), 'lb')).toMatchObject({ kind: 'deload', w: 120 });
   });
+  it('progresses from the same rep range when the lift is on two days', () => {
+    expect(target(bench, hist(sess(135, [8, 8, 8]), sess(60, [20, 20, 20], [12, 20])), 'lb')).toMatchObject({ kind: 'up', w: 140 });
+  });
   it('scales across rep ranges and units', () => {
     const t = target(bench, hist(sess(100, [12, 12, 12], [8, 12])), 'kg');
     expect(t.kind).toBe('scaled');
