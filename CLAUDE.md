@@ -17,7 +17,7 @@ Dev knobs: `?seed=N` fakes N weeks of history through the real progression;
 | How targets are chosen (double progression, deload, cross-range scaling) | `src/progress.ts` |
 | Form hint figures (pose keyframes) and cues per lift | `src/form.ts` |
 | What's saved, custom lifts, export/import | `src/store.ts` |
-| Views, session flow, program editor, rest timer, wake lock | `src/main.ts` |
+| Views, session flow, swaps, editing past workouts, program editor, rest timer | `src/main.ts` |
 | Look | `src/style.css` |
 | Fake history | `src/dev.ts` |
 | Offline caching | `public/sw.js` |

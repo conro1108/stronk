@@ -27,6 +27,7 @@ const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekd
 const go = (hash: string) => (location.hash = hash);
 let picked: string | null = null; // workout previewed on home, if not the rotation's pick
 const openForm = new Set<string>(); // lifts whose form hint is expanded in the session
+let editingLog: string | null = null; // past session open for editing
 
 // ---------- derived ----------
 
@@ -118,7 +119,7 @@ function session(a: Active) {
           )
           .join('')}
         <div class="row"><button data-act="addset" data-l="${li}">+ set</button><button data-act="rmset" data-l="${li}">− set</button>
-          <button data-act="rmlift" data-l="${li}" class="ghost">remove</button></div>
+          ${liftPicker('swaplift', 'Swap…', `class="mini" data-l="${li}"`)}<button data-act="rmlift" data-l="${li}" class="ghost">remove</button></div>
       </section>`;
     })
     .join('');
@@ -131,6 +132,7 @@ function session(a: Active) {
 }
 
 function liftPicker(act: string, label: string, extra = '') {
+  // A mid-list "New exercise…" lets you make a custom lift right where you need it.
   const opts = Object.values(LIFTS)
     .sort((x, y) => x.name.localeCompare(y.name))
     .map((l) => `<option value="${l.id}">${esc(l.name)}</option>`)
@@ -200,9 +202,30 @@ function formsView() {
 function logView(id: string) {
   const s = D.history.find((x) => x.id === id);
   if (!s) return `<header class="top"><a href="#/">‹</a><h1>Not found</h1></header>`;
-  return `
-    <header class="top"><a href="javascript:history.back()" aria-label="Back">‹</a><h1>${esc(sessionName(s))}</h1>
-      <span class="muted">${day(s.date)}</span></header>
+  const editing = editingLog === id;
+  const top = `<header class="top"><a href="javascript:history.back()" aria-label="Back">‹</a><h1>${esc(sessionName(s))}</h1>
+      <span class="muted">${day(s.date)}</span><button class="${editing ? 'primary' : ''}" data-act="logedit" style="margin-left:auto">${editing ? 'Done' : 'Edit'}</button></header>`;
+  if (editing) {
+    return `${top}
+    ${s.lifts
+      .map(
+        (l, li) => `<section class="card lift"><header><h2>${esc(liftInfo(l.lift).name)}</h2></header>
+        ${l.sets
+          .map(
+            (x, si) => `<div class="set log"><span class="n">${si + 1}</span>
+            <input inputmode="decimal" data-lg="w" data-l="${li}" data-s="${si}" value="${fmtW(x.w)}" aria-label="weight"><small>${s.unit}</small>
+            <span class="x">×</span><input inputmode="numeric" data-lg="r" data-l="${li}" data-s="${si}" value="${x.r}" aria-label="reps"></div>`,
+          )
+          .join('')}
+        <div class="row"><button data-act="logaddset" data-l="${li}">+ set</button><button data-act="logrmset" data-l="${li}">− set</button>
+          ${liftPicker('logswap', 'Swap…', `class="mini" data-l="${li}"`)}<button data-act="logrmlift" data-l="${li}" class="ghost">remove</button></div>
+      </section>`,
+      )
+      .join('')}
+    <div class="card add">${liftPicker('logadd', '+ Add exercise')}</div>
+    <p class="muted empty">Swapping keeps the sets and moves them to the other exercise's history, so the original lift's targets ignore this workout.</p>`;
+  }
+  return `${top}
     ${s.lifts
       .map(
         (l) => `<section class="card"><a href="#/lift/${l.lift}"><h2>${esc(liftInfo(l.lift).name)}</h2></a>
@@ -273,6 +296,7 @@ function render() {
   tick();
 }
 window.addEventListener('hashchange', () => {
+  editingLog = null;
   render();
   scrollTo(0, 0);
 });
@@ -362,6 +386,23 @@ app.addEventListener('click', (e) => {
       break;
     }
     case 'rmlift': a!.lifts.splice(+l!, 1); break;
+    case 'logedit': {
+      const id = location.hash.split('/')[2];
+      if (editingLog) {
+        const ls = D.history.find((x) => x.id === editingLog);
+        if (ls) ls.lifts = ls.lifts.filter((x) => x.sets.length);
+        editingLog = null;
+      } else editingLog = id;
+      break;
+    }
+    case 'logaddset': {
+      const sets = logLift(+l!).sets;
+      const last = sets[sets.length - 1];
+      sets.push(last ? { ...last } : { w: 0, r: 8 });
+      break;
+    }
+    case 'logrmset': logLift(+l!).sets.pop(); break;
+    case 'logrmlift': D.history.find((x) => x.id === editingLog)!.lifts.splice(+l!, 1); break;
     case 'dellog':
       if (!confirm('Delete this workout from history?')) return;
       D.history = D.history.filter((x) => x.id !== el.dataset.id);
@@ -397,6 +438,8 @@ app.addEventListener('click', (e) => {
   render();
 });
 
+const logLift = (i: number) => D.history.find((x) => x.id === editingLog)!.lifts[i];
+
 function swap<T>(arr: T[], i: number, j: number) {
   if (j < 0 || j >= arr.length) return;
   [arr[i], arr[j]] = [arr[j], arr[i]];
@@ -405,7 +448,27 @@ function swap<T>(arr: T[], i: number, j: number) {
 app.addEventListener('change', async (e) => {
   const el = e.target as HTMLInputElement & HTMLSelectElement;
   const act = el.dataset.act;
-  if (act === 'addlift' || act === 'sadd') {
+  if (act === 'swaplift' || act === 'logswap' || act === 'logadd') {
+    const id = newLiftFrom(el);
+    if (!id) return;
+    if (act === 'swaplift') {
+      // Checked-off sets stay as entered; the rest take the new lift's target.
+      const l = D.active!.lifts[+el.dataset.l!];
+      const t = target({ lift: id, sets: l.sets.length, reps: l.reps }, D.history, D.unit);
+      Object.assign(l, { lift: id, target: t, sets: l.sets.map((x, i) => (x.done ? x : { w: t.w, r: t.reps[i], done: false })) });
+    } else if (act === 'logswap') logLift(+el.dataset.l!).lift = id;
+    else {
+      const t = target({ lift: id, sets: 3, reps: [8, 12] }, D.history, D.unit);
+      D.history.find((x) => x.id === editingLog)!.lifts.push({ lift: id, reps: [8, 12], sets: t.reps.map((r) => ({ w: t.w, r })) });
+    }
+  } else if (el.dataset.lg) {
+    const v = Number(el.value.replace(',', '.'));
+    if (el.value.trim() === '' || isNaN(v) || v < 0) return;
+    const set = logLift(+el.dataset.l!).sets[+el.dataset.s!];
+    if (el.dataset.lg === 'w') set.w = v;
+    else set.r = Math.round(v);
+    return commit();
+  } else if (act === 'addlift' || act === 'sadd') {
     const id = newLiftFrom(el);
     if (!id) return;
     if (act === 'addlift') {

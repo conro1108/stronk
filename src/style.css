@@ -160,3 +160,6 @@ input:focus { outline: 2px solid var(--volt); outline-offset: -1px; }
 .formgrid a { background: var(--card); border-radius: var(--r); padding: 10px; display: flex; flex-direction: column; align-items: center; font-size: 13px; }
 .formgrid .form.big { width: 100%; height: auto; aspect-ratio: 1; }
 @media (prefers-reduced-motion: reduce) { .form animate { display: none; } }
+
+select.mini { width: auto; flex: 1; min-width: 0; margin: 0; }
+.set.log { grid-template-columns: 20px 1fr auto 14px 1fr; }

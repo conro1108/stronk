@@ -43,6 +43,22 @@ export const LIFTS: Record<string, Lift> = Object.fromEntries(
     L('pushdown', 'Triceps Pushdown', 5, 40, 60),
     L('leg-raise', 'Hanging Leg Raise', 5, 0, 60),
     L('cable-crunch', 'Cable Crunch', 5, 60, 60),
+    // Common substitutes: no slot uses them, but they're one swap away.
+    L('db-bench', 'Dumbbell Bench Press', 5, 35, 90),
+    L('chest-press', 'Chest Press Machine', 5, 70, 90),
+    L('pec-deck', 'Pec Deck', 5, 60, 60),
+    L('dip', 'Dip', 5, 0, 90),
+    L('shoulder-press', 'Shoulder Press Machine', 5, 50, 75),
+    L('rear-delt', 'Reverse Pec Deck', 5, 40, 60),
+    L('chinup', 'Chin-up', 5, 0, 90),
+    L('db-row', 'One-arm DB Row', 5, 35, 75),
+    L('machine-row', 'Machine Row', 5, 70, 75),
+    L('hack-squat', 'Hack Squat', 10, 90, 120),
+    L('goblet-squat', 'Goblet Squat', 5, 30, 75),
+    L('smith-squat', 'Smith Machine Squat', 10, 95, 120),
+    L('seated-calf', 'Seated Calf Raise', 10, 45, 60),
+    L('hammer-curl', 'Hammer Curl', 5, 20, 60),
+    L('skullcrusher', 'Skull Crusher', 5, 40, 60),
   ].map((l) => [l.id, l]),
 );
 
