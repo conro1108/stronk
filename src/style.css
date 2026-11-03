@@ -137,3 +137,26 @@ input:focus { outline: 2px solid var(--volt); outline-offset: -1px; }
   position: fixed; left: 50%; top: calc(14px + env(safe-area-inset-top)); transform: translateX(-50%); z-index: 20;
   background: var(--ink); color: var(--bg); font-weight: 700; padding: 10px 16px; border-radius: 999px; font-size: 14px; white-space: nowrap;
 }
+
+/* Form hints (figures drawn in form.ts) */
+.form { display: block; overflow: visible; }
+.form polyline { fill: none; stroke-linecap: round; stroke-linejoin: round; vector-effect: non-scaling-stroke; }
+.form .body { stroke: var(--ink); stroke-width: 2.5px; }
+.form circle.body { fill: var(--ink); stroke: none; }
+.form .far { stroke: var(--muted); stroke-width: 2.5px; }
+.form .kit { stroke: #4a4a4a; stroke-width: 2.5px; }
+.form circle.kit { fill: #4a4a4a; stroke: none; }
+.form .iron { fill: var(--volt); stroke: var(--card); stroke-width: 1.5px; vector-effect: non-scaling-stroke; }
+.form.small { width: 44px; height: 44px; }
+.form.small .body, .form.small .far, .form.small .kit { stroke-width: 1.6px; }
+.form.big { width: 132px; height: 132px; flex: none; }
+.thumb { padding: 0; min-height: 0; background: var(--bg); border-radius: 10px; margin-right: 10px; flex: none; }
+.lift header { justify-content: flex-start; align-items: center; }
+.lift header > .muted { margin-left: auto; }
+.formcard { display: flex; gap: 14px; align-items: center; margin: 10px 0 4px; }
+.formcard ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--ink); }
+.formcard li + li { margin-top: 6px; }
+.formgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.formgrid a { background: var(--card); border-radius: var(--r); padding: 10px; display: flex; flex-direction: column; align-items: center; font-size: 13px; }
+.formgrid .form.big { width: 100%; height: auto; aspect-ratio: 1; }
+@media (prefers-reduced-motion: reduce) { .form animate { display: none; } }

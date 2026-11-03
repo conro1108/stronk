@@ -8,6 +8,7 @@ import { LIFTS, PROGRAMS, liftInfo, type Workout } from './program';
 import { e1rm, fmtW, liftHistory, target, type Session } from './progress';
 import { addCustomLift, copyProgram, exportJson, importJson, load, save, uid, type Active, type Data } from './store';
 import { seed } from './dev';
+import { FORMS, cues, formSvg, hasForm } from './form';
 
 let D: Data = load();
 const commit = () => save(D);
@@ -25,6 +26,7 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
 const day = (iso: string) => new Date(iso).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
 const go = (hash: string) => (location.hash = hash);
 let picked: string | null = null; // workout previewed on home, if not the rotation's pick
+const openForm = new Set<string>(); // lifts whose form hint is expanded in the session
 
 // ---------- derived ----------
 
@@ -100,7 +102,9 @@ function session(a: Active) {
       const info = liftInfo(l.lift);
       const done = l.sets.length > 0 && l.sets.every((s) => s.done);
       return `<section class="card lift ${done ? 'done' : ''}">
-        <header><a href="#/lift/${l.lift}"><h2>${esc(info.name)}</h2></a><span class="muted">${l.sets.length}×${l.reps[0]}–${l.reps[1]}</span></header>
+        <header>${hasForm(l.lift) ? `<button class="thumb" data-act="form" data-id="${l.lift}" aria-label="Form tips">${formSvg(l.lift, 'form small')}</button>` : ''}
+          <a href="#/lift/${l.lift}"><h2>${esc(info.name)}</h2></a><span class="muted">${l.sets.length}×${l.reps[0]}–${l.reps[1]}</span></header>
+        ${openForm.has(l.lift) ? formCard(l.lift) : ''}
         <p class="note"><span class="badge ${l.target.kind}">${KIND_BADGE[l.target.kind]}</span>${esc(l.target.note)}</p>
         ${l.sets
           .map(
@@ -146,6 +150,7 @@ function liftView(id: string) {
   const pr = pts.reduce<(typeof pts)[number] | null>((b, p) => (!b || p.v > b.v ? p : b), null);
   return `
     <header class="top"><a href="javascript:history.back()" aria-label="Back">‹</a><h1>${esc(info.name)}</h1></header>
+    ${hasForm(id) ? `<section class="card">${formCard(id)}</section>` : ''}
     ${
       pr
         ? `<section class="card"><div class="eyebrow">Estimated 1RM</div>
@@ -179,6 +184,17 @@ function chart(pts: { date: string; v: number; best: { w: number; r: number } }[
   return `<svg class="chart" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="Estimated 1RM over time">
     <line x1="${P}" x2="${W - P}" y1="${H - P}" y2="${H - P}" class="axis"/>
     <path d="${line}"/>${dots}</svg><p id="tip" class="muted tip">Tap a point</p>`;
+}
+
+function formCard(id: string) {
+  return `<div class="formcard">${formSvg(id, 'form big')}<ul>${cues(id).map((c) => `<li>${esc(c)}</li>`).join('')}</ul></div>`;
+}
+
+// Dev page: every figure at once, to tune poses in form.ts.
+function formsView() {
+  return `<header class="top"><a href="#/">‹</a><h1>Forms</h1></header><div class="formgrid">${Object.keys(FORMS)
+    .map((id) => `<a href="#/lift/${id}">${formSvg(id, 'form big')}<span>${esc(liftInfo(id).name)}</span></a>`)
+    .join('')}</div>`;
 }
 
 function logView(id: string) {
@@ -252,6 +268,7 @@ function render() {
     : route === 'log' ? logView(arg)
     : route === 'edit' ? editView()
     : route === 'settings' ? settingsView()
+    : route === 'forms' ? formsView()
     : home();
   tick();
 }
@@ -350,6 +367,7 @@ app.addEventListener('click', (e) => {
       D.history = D.history.filter((x) => x.id !== el.dataset.id);
       commit();
       return history.back();
+    case 'form': openForm.has(el.dataset.id!) ? openForm.delete(el.dataset.id!) : openForm.add(el.dataset.id!); return render();
     case 'pt': document.getElementById('tip')!.textContent = el.dataset.tip!; return;
     case 'wadd': D.program.workouts.push({ id: uid(), name: `Day ${D.program.workouts.length + 1}`, slots: [] }); break;
     case 'wdel':
