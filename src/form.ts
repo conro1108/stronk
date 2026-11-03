@@ -13,6 +13,7 @@ type Prop =
   | { db: true } // dumbbell at H
   | { cable: P2 } // cable from a fixed pulley to H
   | { pad: true } // roller pad at the ankle
+  | { dot: P2 } // fixed roller pad
   | { sled: true }; // leg-press sled under the feet
 type Form = { a: Frame; b: Frame; k?: number; e?: number; k2?: number; mirror?: number; props?: Prop[]; cues: string[] };
 
@@ -93,11 +94,10 @@ export const FORMS: Record<string, Form> = {
     cues: ['Start from a dead hang, shoulders engaged', 'Drive elbows down to your ribs', 'Chin over the bar, lower under control'],
   },
   pulldown: {
-    a: { P: [45, 70], S: [39, 45], A: [66, 90], H: [44, 18] },
-    b: { P: [45, 70], S: [39, 45], A: [66, 90], H: [44, 44] },
-    k: -1,
-    e: 1,
-    props: [{ line: [34, 73, 56, 73] }, { line: [58, 62, 70, 62] }, { cable: [44, -4] }],
+    a: { P: [45, 70], S: [41, 44], A: [66, 90], H: [52, 17] },
+    b: { P: [45, 70], S: [41, 44], A: [66, 90], H: [48, 44] },
+    e: -1,
+    props: [{ line: [34, 73, 56, 73] }, { line: [45, 73, 45, 90] }, { dot: [62, 65] }, { cable: [52, -6] }, { db: true }],
     cues: ['Thighs locked under the pad, slight lean back', 'Pull the bar to your upper chest', 'Lead with elbows, not hands'],
   },
   'cable-row': {
@@ -253,6 +253,7 @@ function shapes(f: Form, fr: Frame): Shape[] {
       out.push({ kind: 'iron', pts: [H], r: 3.5 });
       if (m != null) out.push({ kind: 'iron', pts: flip([H]), r: 3.5 });
     } else if ('pad' in p) out.push({ kind: 'kit', pts: [A], r: 3 });
+    else if ('dot' in p) out.push({ kind: 'kit', pts: [p.dot], r: 3.5 });
   }
   return out;
 }

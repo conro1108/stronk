@@ -102,7 +102,7 @@ function session(a: Active) {
       const info = liftInfo(l.lift);
       const done = l.sets.length > 0 && l.sets.every((s) => s.done);
       return `<section class="card lift ${done ? 'done' : ''}">
-        <header>${hasForm(l.lift) ? `<button class="thumb" data-act="form" data-id="${l.lift}" aria-label="Form tips">${formSvg(l.lift, 'form small')}</button>` : ''}
+        <header>${hasForm(l.lift) ? `<button class="thumb" data-act="form" data-id="${l.lift}" aria-label="Form tips">${formSvg(l.lift, 'form small', true)}</button>` : ''}
           <a href="#/lift/${l.lift}"><h2>${esc(info.name)}</h2></a><span class="muted">${l.sets.length}×${l.reps[0]}–${l.reps[1]}</span></header>
         ${openForm.has(l.lift) ? formCard(l.lift) : ''}
         <p class="note"><span class="badge ${l.target.kind}">${KIND_BADGE[l.target.kind]}</span>${esc(l.target.note)}</p>
