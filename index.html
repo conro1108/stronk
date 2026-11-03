@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>stronk</title>
+    <meta name="description" content="Offline lifting log that tells you what to lift today." />
+    <meta name="theme-color" content="#121212" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icons/favicon-32.png" sizes="32x32" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="stronk" />
+  </head>
+  <body>
+    <main id="app"></main>
+    <div id="rest" hidden><div class="fill"></div><span class="lbl">Rest</span><span class="t"></span>
+      <button data-act="more">+30</button><button data-act="skip">Skip</button></div>
+    <div id="toast" hidden></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
