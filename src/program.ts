@@ -9,6 +9,7 @@ export type Lift = {
   inc: number; // lb added when you top the rep range (halved for kg)
   start: number; // first-ever suggestion, lb (0 = bodyweight / added weight)
   rest: number; // seconds
+  snap?: boolean; // only multiples of inc exist (user set the jump)
 };
 
 export type Slot = { lift: string; sets: number; reps: [min: number, max: number] };

@@ -1,6 +1,8 @@
 // Everything persisted, in one localStorage key: settings, the user's editable
 // program, custom lifts, finished sessions and the in-progress one. Also JSON
-// export/import, since browser storage is the only copy of the data.
+// export/import, since browser storage is the only copy of the data. Custom
+// lifts and per-lift prefs are written into LIFTS at load, so the rest of the
+// app just reads liftInfo().
 
 import { LIFTS, PROGRAMS, type Lift, type Program } from './program';
 import type { Session, Target, Unit } from './progress';
@@ -14,6 +16,7 @@ export type Data = {
   unit: Unit;
   program: Program;
   customLifts: Lift[];
+  liftPrefs: Record<string, { inc?: number; rest?: number; snap?: boolean }>; // per-lift overrides, inc in lb
   history: Session[]; // newest first
   active: Active | null;
 };
@@ -23,11 +26,12 @@ const KEY = 'stronk';
 export const copyProgram = (p: Program): Program => JSON.parse(JSON.stringify(p));
 
 function fresh(): Data {
-  return { v: 1, unit: 'lb', program: copyProgram(PROGRAMS[0]), customLifts: [], history: [], active: null };
+  return { v: 1, unit: 'lb', program: copyProgram(PROGRAMS[0]), customLifts: [], liftPrefs: {}, history: [], active: null };
 }
 
 function adopt(d: Data) {
   for (const l of d.customLifts) LIFTS[l.id] = l;
+  for (const [id, pref] of Object.entries(d.liftPrefs)) if (LIFTS[id]) LIFTS[id] = { ...LIFTS[id], ...pref };
   return d;
 }
 

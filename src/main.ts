@@ -5,7 +5,7 @@
 
 import './style.css';
 import { LIFTS, PROGRAMS, liftInfo, type Workout } from './program';
-import { e1rm, fmtW, liftHistory, target, type Session } from './progress';
+import { e1rm, fmtW, incFor, liftHistory, target, type Session } from './progress';
 import { addCustomLift, copyProgram, exportJson, importJson, load, save, uid, type Active, type Data } from './store';
 import { seed } from './dev';
 import { FORMS, cues, formSvg, hasForm } from './form';
@@ -161,6 +161,9 @@ function liftView(id: string) {
           ${pts.length > 1 ? chart(pts) : ''}</section>`
         : `<p class="muted empty">No sets logged yet.</p>`
     }
+    <section class="card prefs"><label>Weight jump <input inputmode="decimal" data-pref="inc" data-id="${id}" value="${fmtW(incFor(id, D.unit))}"><small>${D.unit}</small></label>
+      <label>Rest <input inputmode="numeric" data-pref="rest" data-id="${id}" value="${info.rest}"><small>sec</small></label>
+      <p class="muted">Fixed bars or a machine that goes 10 at a time? Set 10 and targets only land on weights that exist.</p></section>
     <ul class="list">${past
       .map(
         (p) => `<li><a href="#/log/${p.session.id}"><span>${day(p.session.date)}</span>
@@ -461,6 +464,15 @@ app.addEventListener('change', async (e) => {
       const t = target({ lift: id, sets: 3, reps: [8, 12] }, D.history, D.unit);
       D.history.find((x) => x.id === editingLog)!.lifts.push({ lift: id, reps: [8, 12], sets: t.reps.map((r) => ({ w: t.w, r })) });
     }
+  } else if (el.dataset.pref) {
+    const id = el.dataset.id!;
+    const v = Number(el.value.replace(',', '.'));
+    if (!(v > 0)) return render();
+    const pref = (D.liftPrefs[id] ??= {});
+    if (el.dataset.pref === 'inc') Object.assign(pref, { inc: D.unit === 'kg' ? v * 2 : v, snap: true });
+    else pref.rest = Math.round(v);
+    LIFTS[id] = { ...liftInfo(id), ...pref };
+    toast('Saved');
   } else if (el.dataset.lg) {
     const v = Number(el.value.replace(',', '.'));
     if (el.value.trim() === '' || isNaN(v) || v < 0) return;

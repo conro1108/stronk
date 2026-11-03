@@ -32,3 +32,9 @@ describe('target', () => {
     expect(t.w).toBeGreaterThan(45);
   });
 });
+
+it('snaps suggestions to a jump the user set', async () => {
+  const { LIFTS } = await import('./program');
+  LIFTS.row = { ...LIFTS.row, inc: 10, snap: true };
+  expect(target({ lift: 'row', sets: 3, reps: [6, 10] }, [], 'lb').w).toBe(80);
+});
