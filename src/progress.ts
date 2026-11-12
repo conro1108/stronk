@@ -4,10 +4,11 @@
 // bottom. Two misses in a row at one weight resets 10%. Progression follows
 // the lift's history in this rep range, so a lift on two days in two ranges
 // climbs separately; with no history in this range, scale from e1RM.
+// A lift never done before borrows from a related lift (same `kin`), scaled by the ratio of their starting weights.
 // If the user set a lift's jump, suggestions land on multiples of it, so a
 // fixed-bar rack in 10s never gets told 75.
 
-import { liftInfo, type Slot } from './program';
+import { liftInfo, related, type Slot } from './program';
 
 export type Unit = 'lb' | 'kg';
 export type SetLog = { w: number; r: number };
@@ -54,6 +55,23 @@ export function target(slot: Slot, history: Session[], unit: Unit): Target {
   const past = liftHistory(slot.lift, history, unit);
 
   if (!past.length) {
+    const me = liftInfo(slot.lift);
+    // Of the related lifts done lately, borrow from the one loaded most like
+    // this one: a barbell says more about a machine than one dumbbell does.
+    const kin = related(slot.lift)
+      .filter((l) => l.start > 0 && me.start > 0)
+      .flatMap((l) => liftHistory(l.id, history, unit).slice(0, 1))
+      .sort((a, b) => b.session.date.localeCompare(a.session.date));
+    const fresh = kin.filter((k) => Date.parse(kin[0].session.date) - Date.parse(k.session.date) < 30 * 864e5);
+    const far = (id: string) => Math.abs(Math.log(liftInfo(id).start / me.start));
+    const near = fresh.sort((a, b) => far(a.log.lift) - far(b.log.lift))[0]?.log;
+    if (near) {
+      const from = liftInfo(near.lift);
+      const g = grid(slot.lift, unit);
+      const best = (Math.max(...near.sets.map(e1rm)) * me.start) / from.start;
+      const w = Math.max(g, floorTo(best / (1 + (min + 1) / 30), g));
+      return { w, reps: flat(min), kind: 'scaled', note: `Guessed from ${from.name} ${fmtW(topWeight(near.sets))} × ${fmtReps(near.sets)} — adjust to feel.` };
+    }
     const w = roundTo(convert(liftInfo(slot.lift).start, 'lb', unit), grid(slot.lift, unit));
     return { w, reps: flat(min), kind: 'new', note: 'First time — adjust to something you could do for a couple more.' };
   }

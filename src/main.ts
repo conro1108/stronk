@@ -4,7 +4,7 @@
 // settings (#/settings). The rest timer and session clock live outside #app.
 
 import './style.css';
-import { LIFTS, PROGRAMS, liftInfo, type Workout } from './program';
+import { LIFTS, PROGRAMS, liftInfo, related, type Workout } from './program';
 import { e1rm, fmtW, incFor, liftHistory, target, type Session } from './progress';
 import { addCustomLift, copyProgram, exportJson, importJson, load, save, uid, type Active, type Data } from './store';
 import { seed } from './dev';
@@ -119,7 +119,7 @@ function session(a: Active) {
           )
           .join('')}
         <div class="row"><button data-act="addset" data-l="${li}">+ set</button><button data-act="rmset" data-l="${li}">− set</button>
-          ${liftPicker('swaplift', 'Swap…', `class="mini" data-l="${li}"`)}<button data-act="rmlift" data-l="${li}" class="ghost">remove</button></div>
+          ${liftPicker('swaplift', 'Swap…', `class="mini" data-l="${li}"`, l.lift)}<button data-act="rmlift" data-l="${li}" class="ghost">remove</button></div>
       </section>`;
     })
     .join('');
@@ -131,12 +131,17 @@ function session(a: Active) {
     <button class="ghost wide" data-act="discard">Discard workout</button>`;
 }
 
-function liftPicker(act: string, label: string, extra = '') {
-  // A mid-list "New exercise…" lets you make a custom lift right where you need it.
-  const opts = Object.values(LIFTS)
+function liftPicker(act: string, label: string, extra = '', near?: string) {
+  // Swaps list the lifts related to `near` first. A "New exercise…" at the end
+  // lets you make a custom lift right where you need it.
+  const opt = (l: { id: string; name: string }) => `<option value="${l.id}">${esc(l.name)}</option>`;
+  const kin = near ? related(near) : [];
+  const rest = Object.values(LIFTS)
+    .filter((l) => !kin.includes(l))
     .sort((x, y) => x.name.localeCompare(y.name))
-    .map((l) => `<option value="${l.id}">${esc(l.name)}</option>`)
+    .map(opt)
     .join('');
+  const opts = kin.length ? `<optgroup label="Similar">${kin.map(opt).join('')}</optgroup><optgroup label="Everything">${rest}</optgroup>` : rest;
   return `<select data-act="${act}" ${extra}><option value="">${label}</option>${opts}<option value="__new">New exercise…</option></select>`;
 }
 
@@ -161,6 +166,7 @@ function liftView(id: string) {
           ${pts.length > 1 ? chart(pts) : ''}</section>`
         : `<p class="muted empty">No sets logged yet.</p>`
     }
+    ${related(id).length ? `<p class="muted kin">Similar: ${related(id).map((l) => `<a href="#/lift/${l.id}">${esc(l.name)}</a>`).join(' · ')}</p>` : ''}
     <section class="card prefs"><label>Weight jump <input inputmode="decimal" data-pref="inc" data-id="${id}" value="${fmtW(incFor(id, D.unit))}"><small>${D.unit}</small></label>
       <label>Rest <input inputmode="numeric" data-pref="rest" data-id="${id}" value="${info.rest}"><small>sec</small></label>
       <p class="muted">Fixed bars or a machine that goes 10 at a time? Set 10 and targets only land on weights that exist.</p></section>
@@ -221,7 +227,7 @@ function logView(id: string) {
           )
           .join('')}
         <div class="row"><button data-act="logaddset" data-l="${li}">+ set</button><button data-act="logrmset" data-l="${li}">− set</button>
-          ${liftPicker('logswap', 'Swap…', `class="mini" data-l="${li}"`)}<button data-act="logrmlift" data-l="${li}" class="ghost">remove</button></div>
+          ${liftPicker('logswap', 'Swap…', `class="mini" data-l="${li}"`, l.lift)}<button data-act="logrmlift" data-l="${li}" class="ghost">remove</button></div>
       </section>`,
       )
       .join('')}

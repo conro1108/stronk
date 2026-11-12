@@ -25,6 +25,11 @@ describe('target', () => {
   it('progresses from the same rep range when the lift is on two days', () => {
     expect(target(bench, hist(sess(135, [8, 8, 8]), sess(60, [20, 20, 20], [12, 20])), 'lb')).toMatchObject({ kind: 'up', w: 140 });
   });
+  it('guesses a new lift from a related one', () => {
+    const t = target({ ...bench, lift: 'chest-press' }, hist(sess(190, [8, 8, 8])), 'lb');
+    expect(t).toMatchObject({ kind: 'scaled', w: 165 });
+    expect(target({ ...bench, lift: 'squat' }, hist(sess(190, [8, 8, 8])), 'lb').kind).toBe('new');
+  });
   it('scales across rep ranges and units', () => {
     const t = target(bench, hist(sess(100, [12, 12, 12], [8, 12])), 'kg');
     expect(t.kind).toBe('scaled');

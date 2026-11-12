@@ -26,6 +26,9 @@ Dev knobs: `?seed=N` fakes N weeks of history through the real progression;
 
 - History is keyed by lift id. Changing an id in `LIFTS` orphans that lift's
   history, and dropping a lift a saved program still uses leaves a slot named after its raw id.
+- Lifts sharing a `kin` in `LIFTS` are related: a never-done lift's first
+  target is a relative's history scaled by the ratio of their `start`s. So a
+  `start` is also a strength ratio; a careless one makes a bad carry-over guess.
 - The user's program is a copy in storage. Edits to the templates in
   `program.ts` only reach people who pick the template again in Settings.
 - Sessions store weights in the unit they were logged in. Anything reading
