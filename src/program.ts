@@ -170,7 +170,7 @@ export const PROGRAMS: Program[] = [
       {
         id: 'upper-a',
         name: 'Upper A',
-        slots: [S('bench', 4, 5, 8), S('row', 4, 6, 10), S('ohp', 3, 6, 10), S('pulldown', 3, 8, 12), S('lateral', 3, 12, 20), S('pushdown', 3, 10, 15)],
+        slots: [S('bench', 4, 5, 8), S('row', 4, 6, 10), S('ohp', 3, 6, 10), S('pulldown', 3, 8, 12), S('cable-fly', 3, 10, 15), S('lateral', 3, 12, 20), S('pushdown', 3, 10, 15), S('hammer-curl', 2, 10, 15)],
       },
       {
         id: 'lower-a',
@@ -180,12 +180,12 @@ export const PROGRAMS: Program[] = [
       {
         id: 'upper-b',
         name: 'Upper B',
-        slots: [S('incline-db', 4, 8, 12), S('close-pulldown', 4, 6, 10), S('cable-row', 3, 8, 12), S('db-press', 3, 8, 12), S('curl', 3, 8, 12), S('face-pull', 3, 12, 20)],
+        slots: [S('incline-db', 3, 8, 12), S('close-pulldown', 3, 6, 10), S('db-press', 3, 8, 12), S('cable-row', 3, 8, 12), S('pec-deck', 3, 10, 15), S('curl', 3, 8, 12), S('overhead-ext', 3, 10, 15), S('face-pull', 2, 12, 20)],
       },
       {
         id: 'lower-b',
         name: 'Lower B',
-        slots: [S('deadlift', 3, 3, 6), S('split-squat', 3, 8, 12), S('hip-thrust', 3, 8, 12), S('leg-ext', 3, 10, 15), S('calf', 3, 12, 20), S('cable-crunch', 3, 10, 15)],
+        slots: [S('deadlift', 3, 3, 6), S('split-squat', 3, 8, 12), S('hip-thrust', 3, 8, 12), S('leg-ext', 3, 10, 15), S('seated-curl', 3, 10, 15), S('seated-calf', 3, 12, 20), S('cable-crunch', 3, 10, 15)],
       },
     ],
   },
@@ -197,17 +197,17 @@ export const PROGRAMS: Program[] = [
       {
         id: 'fb-a',
         name: 'Day A',
-        slots: [S('squat', 3, 5, 8), S('bench', 3, 5, 8), S('row', 3, 6, 10), S('leg-curl', 2, 10, 15), S('lateral', 2, 12, 20)],
+        slots: [S('squat', 3, 5, 8), S('bench', 3, 5, 8), S('row', 3, 6, 10), S('leg-curl', 2, 10, 15), S('lateral', 2, 12, 20), S('cable-crunch', 2, 10, 15)],
       },
       {
         id: 'fb-b',
         name: 'Day B',
-        slots: [S('deadlift', 3, 3, 6), S('ohp', 3, 6, 10), S('pulldown', 3, 6, 10), S('split-squat', 2, 8, 12), S('curl', 2, 8, 12)],
+        slots: [S('deadlift', 3, 3, 6), S('ohp', 3, 6, 10), S('pulldown', 3, 6, 10), S('split-squat', 2, 8, 12), S('pec-deck', 2, 10, 15), S('curl', 2, 8, 12)],
       },
       {
         id: 'fb-c',
         name: 'Day C',
-        slots: [S('front-squat', 3, 6, 10), S('incline-db', 3, 8, 12), S('cable-row', 3, 8, 12), S('hip-thrust', 2, 8, 12), S('pushdown', 2, 10, 15)],
+        slots: [S('front-squat', 3, 6, 10), S('incline-db', 3, 8, 12), S('cable-row', 3, 8, 12), S('hip-thrust', 2, 8, 12), S('pushdown', 2, 10, 15), S('calf', 2, 10, 15)],
       },
     ],
   },
