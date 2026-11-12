@@ -33,8 +33,8 @@ Dev knobs: `?seed=N` fakes N weeks of history through the real progression;
   `program.ts` only reach people who pick the template again in Settings.
 - Sessions store weights in the unit they were logged in. Anything reading
   them goes through `liftHistory`/`convert`, or mixed lb/kg history lies.
-- A lift with no entry in `FORMS` simply shows no hint (custom lifts never
-  have one). Figures animate via SMIL, so check new poses in a real browser
+- A lift with no entry in `FORMS` simply shows no hint (custom lifts only
+  borrow one when made as a version of a catalog lift). Figures animate via SMIL, so check new poses in a real browser
   on `#/forms`: tsc can't tell you a knee bends backwards.
 - The service worker only registers in production builds, so `npm run dev`
   never serves stale cached code.

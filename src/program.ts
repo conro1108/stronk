@@ -11,6 +11,7 @@ export type Lift = {
   rest: number; // seconds
   snap?: boolean; // only multiples of inc exist (user set the jump)
   kin?: string; // movement group: lifts sharing one are swaps for each other
+  base?: string; // custom lift made as a version of this one: shares its figure and group
   reps?: [min: number, max: number]; // rep range it gets when added or swapped in (default 8–12)
 };
 

@@ -60,11 +60,13 @@ export function importJson(text: string): Data {
   return adopt({ ...fresh(), ...d, active: null });
 }
 
-export function addCustomLift(d: Data, name: string): string {
-  const base = 'c-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  let id = base;
-  for (let i = 2; LIFTS[id]; i++) id = `${base}-${i}`;
-  const lift: Lift = { id, name, inc: 5, start: 0, rest: 90 };
+/** `base` makes it a version of an existing lift (another machine, say): same
+ * group, jump, rest and starting weight, but its own id and so its own history. */
+export function addCustomLift(d: Data, name: string, base?: string): string {
+  const slug = 'c-' + name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  let id = slug;
+  for (let i = 2; LIFTS[id]; i++) id = `${slug}-${i}`;
+  const lift: Lift = base && LIFTS[base] ? { ...LIFTS[base], id, name, base: LIFTS[base].base ?? base } : { id, name, inc: 5, start: 0, rest: 90 };
   d.customLifts.push(lift);
   LIFTS[id] = lift;
   return id;

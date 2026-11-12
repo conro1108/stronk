@@ -142,7 +142,7 @@ function liftPicker(act: string, label: string, extra = '', near?: string) {
     .map(opt)
     .join('');
   const opts = kin.length ? `<optgroup label="Similar">${kin.map(opt).join('')}</optgroup><optgroup label="Everything">${rest}</optgroup>` : rest;
-  return `<select data-act="${act}" ${extra}><option value="">${label}</option>${opts}<option value="__new">New exercise…</option></select>`;
+  return `<select data-act="${act}" ${near ? `data-near="${near}"` : ''} ${extra}><option value="">${label}</option>${opts}<option value="__new">New exercise…</option></select>`;
 }
 
 function liftView(id: string) {
@@ -167,6 +167,7 @@ function liftView(id: string) {
         : `<p class="muted empty">No sets logged yet.</p>`
     }
     ${related(id).length ? `<p class="muted kin">Similar: ${related(id).map((l) => `<a href="#/lift/${l.id}">${esc(l.name)}</a>`).join(' · ')}</p>` : ''}
+    <button class="ghost wide" data-act="variant" data-id="${id}">+ Another version (a different machine)</button>
     <section class="card prefs"><label>Weight jump <input inputmode="decimal" data-pref="inc" data-id="${id}" value="${fmtW(incFor(id, D.unit))}"><small>${D.unit}</small></label>
       <label>Rest <input inputmode="numeric" data-pref="rest" data-id="${id}" value="${info.rest}"><small>sec</small></label>
       <p class="muted">Fixed bars or a machine that goes 10 at a time? Set 10 and targets only land on weights that exist.</p></section>
@@ -358,8 +359,10 @@ function newLiftFrom(sel: HTMLSelectElement): string | null {
   const v = sel.value;
   sel.value = '';
   if (v !== '__new') return v || null;
-  const name = prompt('Exercise name')?.trim();
-  return name ? addCustomLift(D, name) : null;
+  // From a Swap menu, the new exercise is a version of the one being swapped out.
+  const near = sel.dataset.near;
+  const name = prompt(near ? `New exercise like ${liftInfo(near).name} — name it` : 'Exercise name')?.trim();
+  return name ? addCustomLift(D, name, near) : null;
 }
 
 // ---------- events ----------
@@ -418,6 +421,14 @@ app.addEventListener('click', (e) => {
       commit();
       return history.back();
     case 'form': openForm.has(el.dataset.id!) ? openForm.delete(el.dataset.id!) : openForm.add(el.dataset.id!); return render();
+    case 'variant': {
+      const base = el.dataset.id!;
+      const name = prompt(`Name this version of ${liftInfo(base).name}, e.g. "${liftInfo(base).name} (blue one)". It keeps its own weights.`)?.trim();
+      if (!name) return;
+      const id = addCustomLift(D, name, base);
+      commit();
+      return go(`#/lift/${id}`);
+    }
     case 'pt': document.getElementById('tip')!.textContent = el.dataset.tip!; return;
     case 'wadd': D.program.workouts.push({ id: uid(), name: `Day ${D.program.workouts.length + 1}`, slots: [] }); break;
     case 'wdel':

@@ -5,6 +5,8 @@
 // Coordinates are a side view facing right, floor at y≈90; the viewBox fits
 // itself. See every figure at once on #/forms.
 
+import { LIFTS } from './program';
+
 type P2 = [number, number];
 type Frame = { P: P2; S: P2; H: P2; A: P2; A2?: P2; ft?: number };
 type Prop =
@@ -313,10 +315,12 @@ const fmt = (pts: P2[]) => pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`
 const ANIM = 'dur="3.2s" repeatCount="indefinite" keyTimes="0;0.15;0.5;0.65;1" calcMode="spline" keySplines="0 0 1 1;.45 0 .55 1;0 0 1 1;.45 0 .55 1"';
 const anim = (attr: string, a: string, b: string) => (a === b ? '' : `<animate attributeName="${attr}" values="${a};${a};${b};${b};${a}" ${ANIM}/>`);
 
-export const hasForm = (lift: string) => lift in FORMS;
+// A custom version of a lift borrows the original's figure.
+const form = (lift: string): Form | undefined => FORMS[lift] ?? FORMS[LIFTS[lift]?.base ?? ''];
+export const hasForm = (lift: string) => !!form(lift);
 
 export function formSvg(lift: string, cls = 'form', still = false): string {
-  const f = FORMS[lift];
+  const f = form(lift);
   if (!f) return '';
   const A = shapes(f, f.a), B = shapes(f, f.b);
   const all = [...A, ...B].flatMap((s) => s.pts.map(([x, y]) => [x, y, s.r ?? 0]));
@@ -336,4 +340,4 @@ export function formSvg(lift: string, cls = 'form', still = false): string {
   return `<svg class="${cls}" viewBox="${vb}" aria-hidden="true">${els}</svg>`;
 }
 
-export const cues = (lift: string) => FORMS[lift]?.cues ?? [];
+export const cues = (lift: string) => form(lift)?.cues ?? [];
