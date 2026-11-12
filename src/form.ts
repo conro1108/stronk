@@ -139,16 +139,21 @@ export const FORMS: Record<string, Form> = {
     cues: ['Upper back on the bench edge, bar over hips', 'Chin tucked, drive hips up until flat', 'Squeeze glutes at the top for a beat'],
   },
   'leg-curl': {
+    a: { S: [26, 58], P: [52, 58], A: [92, 60], H: [30, 72], ft: 180 },
+    b: { S: [26, 58], P: [52, 58], A: [70, 39], H: [30, 72], ft: 90 },
+    k: -1,
+    props: [{ line: [14, 64, 66, 64] }, { line: [20, 64, 20, 90] }, { line: [60, 64, 60, 90] }, { pad: true }],
+    cues: ['Lie face down, knees just off the pad edge', 'Curl heels toward your glutes, hips stay down', 'Lower slowly — the negative counts'],
+  },
+  'seated-curl': {
     a: { P: [45, 66], S: [42, 40], A: [86, 62], H: [50, 64] },
     b: { P: [45, 66], S: [42, 40], A: [62, 87], H: [50, 64] },
-    k: -1,
     props: [{ line: [32, 38, 34, 69, 62, 69] }, { line: [48, 69, 48, 90] }, { pad: true }],
-    cues: ['Knees lined up with the machine pivot', 'Curl heels under you, hold a beat', 'Lower slowly — the negative counts'],
+    cues: ['Knees lined up with the machine pivot, thigh pad snug', 'Curl heels under the seat, hold a beat', 'Lower slowly — the negative counts'],
   },
   'leg-ext': {
     a: { P: [45, 66], S: [42, 40], A: [63, 86], H: [50, 66] },
     b: { P: [45, 66], S: [42, 40], A: [86, 62], H: [50, 66] },
-    k: -1,
     props: [{ line: [32, 38, 34, 69, 62, 69] }, { line: [48, 69, 48, 90] }, { pad: true }],
     cues: ['Knees at the pivot, back against the pad', 'Straighten fully and squeeze the quads', 'Lower under control'],
   },
@@ -169,7 +174,7 @@ export const FORMS: Record<string, Form> = {
   'face-pull': {
     a: { ...stand, H: [73, 19] },
     b: { ...stand, H: [54, 13] },
-    e: -1,
+    e: 1,
     props: [{ cable: [99, 17] }],
     cues: ['Rope at face height, thumbs toward you', 'Pull to your forehead, hands apart', 'Elbows high, finish like a double-biceps pose'],
   },
@@ -186,6 +191,40 @@ export const FORMS: Record<string, Form> = {
     e: -1,
     props: [{ cable: [57, -6] }],
     cues: ['Elbows fixed at your sides', 'Push down until arms are straight', "Only the forearms move"],
+  },
+  'hammer-curl': {
+    a: { ...stand, H: [50, 49] },
+    b: { ...stand, H: [55, 26] },
+    e: -1,
+    props: [{ db: true }],
+    cues: ['Palms face each other the whole way', 'Elbows pinned to your sides, no swinging', 'Lower all the way down'],
+  },
+  'overhead-ext': {
+    a: { A: [48, 89], P: [45, 50], S: [56, 27], H: [48, 17] },
+    b: { A: [48, 89], P: [45, 50], S: [56, 27], H: [78, 12] },
+    props: [{ cable: [12, 2] }],
+    cues: ['Face away from the pulley, lean forward, elbows by your ears', 'Let the rope stretch deep behind your head', 'Straighten your arms; only the forearms move'],
+  },
+  'cable-fly': {
+    a: { P: [43, 48], S: [40, 23], A: [43, 89], H: [16, 14], ft: -110 },
+    b: { P: [43, 48], S: [40, 23], A: [43, 89], H: [45, 44], ft: -110 },
+    mirror: 48,
+    props: [{ cable: [6, 0] }],
+    cues: ['Step forward, chest up, slight bend in the elbows', 'Sweep your hands down and together in a wide arc', 'Open back up slowly until your chest stretches'],
+  },
+  'pec-deck': {
+    a: { P: [43, 60], S: [40, 30], A: [37, 89], H: [15, 30], ft: -110 },
+    b: { P: [43, 60], S: [40, 30], A: [37, 89], H: [45, 33], ft: -110 },
+    mirror: 48,
+    k: -1,
+    props: [{ line: [30, 63, 66, 63] }],
+    cues: ['Seat height so handles sit at chest level', 'Squeeze your arms together, elbows soft', 'Open only as far as your shoulders stay comfortable'],
+  },
+  'seated-calf': {
+    a: { P: [40, 66], S: [40, 40], A: [61, 89], H: [56, 62], ft: 80 },
+    b: { P: [40, 66], S: [40, 40], A: [62, 84], H: [57, 59], ft: 150 },
+    props: [{ line: [30, 69, 50, 69] }, { line: [40, 69, 40, 90] }, { line: [58, 92, 74, 92] }, { dot: [61, 62] }],
+    cues: ['Pad on your lower thighs, balls of feet on the block', 'Let heels sink for a full stretch, pause', 'Push up as high as you can and squeeze'],
   },
   'leg-raise': {
     a: { H: [48, 6], S: [48, 32], P: [48, 58], A: [49, 99], ft: 170 },
@@ -234,7 +273,10 @@ function shapes(f: Form, fr: Frame): Shape[] {
       const pts: P2[] = [];
       for (let i = 0; i < p.line.length; i += 2) pts.push([p.line[i], p.line[i + 1]]);
       out.push({ kind: 'kit', pts });
-    } else if ('cable' in p) out.push({ kind: 'kit', pts: [p.cable, H] });
+    } else if ('cable' in p) {
+      out.push({ kind: 'kit', pts: [p.cable, H] });
+      if (m != null) out.push({ kind: 'kit', pts: flip([p.cable, H]) });
+    }
     else if ('sled' in p) out.push({ kind: 'kit', pts: [[A[0] - 9, A[1] - 9], [A[0] + 9, A[1] + 9]] });
   }
 
