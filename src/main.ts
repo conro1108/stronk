@@ -4,7 +4,7 @@
 // settings (#/settings). The rest timer and session clock live outside #app.
 
 import './style.css';
-import { LIFTS, PROGRAMS, liftInfo, related, type Workout } from './program';
+import { LIFTS, PROGRAMS, defaultSlot, liftInfo, related, type Workout } from './program';
 import { e1rm, fmtW, incFor, liftHistory, target, type Session } from './progress';
 import { addCustomLift, copyProgram, exportJson, importJson, load, save, uid, type Active, type Data } from './store';
 import { seed } from './dev';
@@ -461,14 +461,17 @@ app.addEventListener('change', async (e) => {
     const id = newLiftFrom(el);
     if (!id) return;
     if (act === 'swaplift') {
-      // Checked-off sets stay as entered; the rest take the new lift's target.
+      // Checked-off sets stay as entered; the rest take the new lift's target,
+      // in the new lift's own rep range (leg extensions don't inherit squat's 5–8).
       const l = D.active!.lifts[+el.dataset.l!];
-      const t = target({ lift: id, sets: l.sets.length, reps: l.reps }, D.history, D.unit);
-      Object.assign(l, { lift: id, target: t, sets: l.sets.map((x, i) => (x.done ? x : { w: t.w, r: t.reps[i], done: false })) });
+      const reps = defaultSlot(id).reps;
+      const t = target({ lift: id, sets: l.sets.length, reps }, D.history, D.unit);
+      Object.assign(l, { lift: id, reps, target: t, sets: l.sets.map((x, i) => (x.done ? x : { w: t.w, r: t.reps[i], done: false })) });
     } else if (act === 'logswap') logLift(+el.dataset.l!).lift = id;
     else {
-      const t = target({ lift: id, sets: 3, reps: [8, 12] }, D.history, D.unit);
-      D.history.find((x) => x.id === editingLog)!.lifts.push({ lift: id, reps: [8, 12], sets: t.reps.map((r) => ({ w: t.w, r })) });
+      const slot = defaultSlot(id);
+      const t = target(slot, D.history, D.unit);
+      D.history.find((x) => x.id === editingLog)!.lifts.push({ lift: id, reps: slot.reps, sets: t.reps.map((r) => ({ w: t.w, r })) });
     }
   } else if (el.dataset.pref) {
     const id = el.dataset.id!;
@@ -490,11 +493,11 @@ app.addEventListener('change', async (e) => {
     const id = newLiftFrom(el);
     if (!id) return;
     if (act === 'addlift') {
-      const slot = { lift: id, sets: 3, reps: [8, 12] as [number, number] };
+      const slot = defaultSlot(id);
       const t = target(slot, D.history, D.unit);
       D.active!.lifts.push({ lift: id, reps: slot.reps, target: t, sets: t.reps.map((r) => ({ w: t.w, r, done: false })) });
     } else {
-      D.program.workouts[+el.dataset.w!].slots.push({ lift: id, sets: 3, reps: [8, 12] });
+      D.program.workouts[+el.dataset.w!].slots.push(defaultSlot(id));
     }
   } else if (act === 'import') {
     const file = el.files?.[0];

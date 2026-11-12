@@ -11,6 +11,7 @@ export type Lift = {
   rest: number; // seconds
   snap?: boolean; // only multiples of inc exist (user set the jump)
   kin?: string; // movement group: lifts sharing one are swaps for each other
+  reps?: [min: number, max: number]; // rep range it gets when added or swapped in (default 8–12)
 };
 
 export type Slot = { lift: string; sets: number; reps: [min: number, max: number] };
@@ -152,6 +153,20 @@ export const LIFTS: Record<string, Lift> = Object.fromEntries(
     ),
   ].map((l) => [l.id, l]),
 );
+
+// Rep range a lift gets when it's added or swapped in: heavy compounds stay
+// low, isolation and small muscles go high. Everything unlisted is 8–12.
+const RANGES: [[number, number], string][] = [
+  [[3, 6], 'deadlift trap-deadlift'],
+  [[5, 8], 'squat bench'],
+  [[6, 10], 'front-squat smith-squat hack-squat pendulum-squat belt-squat incline-bench close-bench smith-bench ohp smith-ohp row tbar-row pullup chinup pulldown close-pulldown machine-pulldown dip'],
+  [[10, 15], 'leg-press pec-deck cable-fly db-fly straight-arm pullover leg-curl seated-curl leg-ext adductor abductor kickback pull-through back-ext hammer-curl cable-curl preacher pushdown overhead-ext skullcrusher dip-machine shrug machine-shrug cable-crunch ab-machine pushup'],
+  [[12, 20], 'lateral cable-lateral machine-lateral face-pull rear-delt db-rear-delt calf seated-calf press-calf'],
+  [[8, 15], 'leg-raise'],
+];
+for (const [reps, ids] of RANGES) for (const id of ids.split(' ')) LIFTS[id].reps = reps;
+
+export const defaultSlot = (lift: string): Slot => ({ lift, sets: 3, reps: [...(LIFTS[lift]?.reps ?? [8, 12])] as [number, number] });
 
 /** Other lifts that train the same movement, by name. */
 export const related = (id: string): Lift[] => {
