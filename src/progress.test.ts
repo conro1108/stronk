@@ -25,6 +25,12 @@ describe('target', () => {
   it('progresses from the same rep range when the lift is on two days', () => {
     expect(target(bench, hist(sess(135, [8, 8, 8]), sess(60, [20, 20, 20], [12, 20])), 'lb')).toMatchObject({ kind: 'up', w: 140 });
   });
+  it('uneven sets: targets the weight most sets used, short sessions are not misses', () => {
+    const mix = (...sets: [number, number][]): Session => ({ ...sess(0, []), lifts: [{ lift: 'bench', reps: [5, 8], sets: sets.map(([w, r]) => ({ w, r })) }] });
+    expect(target(bench, hist(mix([100, 8], [100, 7], [110, 3])), 'lb')).toMatchObject({ kind: 'same', w: 100, reps: [8, 8, 7] });
+    expect(target(bench, hist(mix([60, 10], [100, 8], [100, 8], [100, 8])), 'lb')).toMatchObject({ kind: 'up', w: 105 });
+    expect(target(bench, hist(sess(135, [6, 6]), sess(135, [7, 6])), 'lb')).toMatchObject({ kind: 'same', w: 135, reps: [8, 7, 5] });
+  });
   it('guesses a new lift from a related one', () => {
     const t = target({ ...bench, lift: 'chest-press' }, hist(sess(190, [8, 8, 8])), 'lb');
     expect(t).toMatchObject({ kind: 'scaled', w: 165 });

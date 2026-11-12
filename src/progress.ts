@@ -1,7 +1,8 @@
 // What to lift today. Pure: given a slot and the history, propose weight and
 // reps per set. Double progression — beat last time's reps at the same weight
 // until every set hits the top of the range, then add weight and drop to the
-// bottom. Two misses in a row at one weight resets 10%. Progression follows
+// bottom. Two sessions in a row with a set under the range at one weight
+// resets 10%; doing fewer sets isn't a miss. Progression follows
 // the lift's history in this rep range, so a lift on two days in two ranges
 // climbs separately; with no history in this range, scale from e1RM.
 // A lift never done before borrows from a related lift (same `kin`), scaled by the ratio of their starting weights.
@@ -45,8 +46,20 @@ export function liftHistory(lift: string, history: Session[], unit: Unit) {
   return out.sort((a, b) => b.session.date.localeCompare(a.session.date));
 }
 
-const topWeight = (sets: SetLog[]) => Math.max(...sets.map((s) => s.w));
-const fmtReps = (sets: SetLog[]) => sets.map((s) => s.r).join('·');
+const bestSet = (sets: SetLog[]) => sets.reduce((b, s) => (e1rm(s) > e1rm(b) ? s : b));
+const fmtBest = (sets: SetLog[]) => `${fmtW(bestSet(sets).w)} × ${bestSet(sets).r}`;
+
+// A logged lift boiled down to one working weight and the reps done there.
+// The working weight is the one most sets used (heavier wins a tie), so one
+// heavy single or a warm-up doesn't set next time's target. Lighter sets are
+// dropped; a heavier set counts as the reps it would have been worth at the
+// working weight.
+function work(log: LiftLog) {
+  const count = (w: number) => log.sets.filter((s) => s.w === w).length;
+  const w = log.sets.map((s) => s.w).reduce((a, b) => (count(b) > count(a) || (count(b) === count(a) && b > a) ? b : a));
+  const reps = log.sets.filter((s) => s.w >= w).map((s) => (s.w === w ? s.r : Math.floor(30 * (e1rm(s) / w - 1))));
+  return { w, reps };
+}
 
 export function target(slot: Slot, history: Session[], unit: Unit): Target {
   const [min, max] = slot.reps;
@@ -70,7 +83,7 @@ export function target(slot: Slot, history: Session[], unit: Unit): Target {
       const g = grid(slot.lift, unit);
       const best = (Math.max(...near.sets.map(e1rm)) * me.start) / from.start;
       const w = Math.max(g, floorTo(best / (1 + (min + 1) / 30), g));
-      return { w, reps: flat(min), kind: 'scaled', note: `Guessed from ${from.name} ${fmtW(topWeight(near.sets))} × ${fmtReps(near.sets)} — adjust to feel.` };
+      return { w, reps: flat(min), kind: 'scaled', note: `Guessed from ${from.name} ${fmtBest(near.sets)} — adjust to feel.` };
     }
     const w = roundTo(convert(liftInfo(slot.lift).start, 'lb', unit), grid(slot.lift, unit));
     return { w, reps: flat(min), kind: 'new', note: 'First time — adjust to something you could do for a couple more.' };
@@ -81,25 +94,25 @@ export function target(slot: Slot, history: Session[], unit: Unit): Target {
     const other = past[0].log;
     const best = Math.max(...other.sets.map(e1rm));
     const w = floorTo(best / (1 + (min + 1) / 30), grid(slot.lift, unit));
-    return { w, reps: flat(min), kind: 'scaled', note: `Scaled from ${fmtW(topWeight(other.sets))} × ${fmtReps(other.sets)} at ${other.reps[0]}–${other.reps[1]}.` };
+    return { w, reps: flat(min), kind: 'scaled', note: `Scaled from ${fmtBest(other.sets)} at ${other.reps[0]}–${other.reps[1]}.` };
   }
 
-  const last = same[0].log;
-  const W = topWeight(last.sets);
+  const last = work(same[0].log);
+  const W = last.w;
 
-  const work = last.sets.filter((s) => s.w >= W);
-  if (work.length >= n && work.every((s) => s.r >= max)) {
+  if (last.reps.length >= n && last.reps.every((r) => r >= max)) {
     return { w: W + incFor(slot.lift, unit), reps: flat(min), kind: 'up', note: `Hit ${max}s across last time — add weight.` };
   }
 
-  const missed = (l: LiftLog) => l.sets.length < n || l.sets.some((s) => s.r < min);
-  const prev = same[1]?.log;
-  if (missed(last) && prev && topWeight(prev.sets) === W && missed(prev)) {
+  const prev = same[1] && work(same[1].log);
+  const missed = (x: { reps: number[] }) => x.reps.some((r) => r < min);
+  if (missed(last) && prev && prev.w === W && missed(prev)) {
     return { w: floorTo(W * 0.9, grid(slot.lift, unit)), reps: flat(min), kind: 'deload', note: `Stalled twice at ${fmtW(W)} — back off 10% and build again.` };
   }
 
-  const reps = Array.from({ length: n }, (_, i) => Math.min(max, Math.max(min, (work[i]?.r ?? min - 1) + 1)));
-  return { w: W, reps, kind: 'same', note: `Last: ${fmtReps(last.sets)}. Beat it by a rep.` };
+  const reps = Array.from({ length: n }, (_, i) => Math.min(max, Math.max(min, (last.reps[i] ?? min - 1) + 1)));
+  const mixed = same[0].log.sets.some((x) => x.w !== W);
+  return { w: W, reps, kind: 'same', note: `Last: ${last.reps.join('·')}${mixed ? ` at ${fmtW(W)}` : ''}. Beat it by a rep.` };
 }
 
 /** Trim float noise from unit conversion: 102.06 -> 102, 61.25 stays. */
