@@ -50,13 +50,16 @@ const bestSet = (sets: SetLog[]) => sets.reduce((b, s) => (e1rm(s) > e1rm(b) ? s
 const fmtBest = (sets: SetLog[]) => `${fmtW(bestSet(sets).w)} × ${bestSet(sets).r}`;
 
 // A logged lift boiled down to one working weight and the reps done there.
-// The working weight is the one most sets used (heavier wins a tie), so one
+// The working weight is the one most sets used (on a tie the middle one, so a
+// 180/150/120 drop lands on 150; of two, the heavier), so one
 // heavy single or a warm-up doesn't set next time's target. Lighter sets are
 // dropped; a heavier set counts as the reps it would have been worth at the
 // working weight.
 function work(log: LiftLog) {
   const count = (w: number) => log.sets.filter((s) => s.w === w).length;
-  const w = log.sets.map((s) => s.w).reduce((a, b) => (count(b) > count(a) || (count(b) === count(a) && b > a) ? b : a));
+  const ws = [...new Set(log.sets.map((s) => s.w))].sort((a, b) => a - b);
+  const top = ws.filter((x) => count(x) === Math.max(...ws.map(count)));
+  const w = top[Math.floor(top.length / 2)];
   const reps = log.sets.filter((s) => s.w >= w).map((s) => (s.w === w ? s.r : Math.floor(30 * (e1rm(s) / w - 1))));
   return { w, reps };
 }
