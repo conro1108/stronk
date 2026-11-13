@@ -1,13 +1,13 @@
-// Hand-rolled PNG icons (no image deps): a volt barbell on iron, drawn on a
+// Hand-rolled PNG icons (no image deps): a yellow-chalk barbell on the board, drawn on a
 // 16x16 grid and nearest-neighbor upscaled. `npm run icons` rewrites public/icons.
 import { deflateSync } from 'node:zlib';
 import { mkdirSync, writeFileSync } from 'node:fs';
 
 const PALETTE = {
-  '.': [0x12, 0x12, 0x12, 255],
-  V: [0xd6, 0xff, 0x3d, 255],
-  v: [0x9d, 0xbd, 0x2a, 255],
-  b: [0xf2, 0xef, 0xe8, 255],
+  '.': [0x0f, 0x18, 0x14, 255],
+  V: [0xf3, 0xd2, 0x50, 255],
+  v: [0xb3, 0x99, 0x36, 255],
+  b: [0xec, 0xe8, 0xdc, 255],
 };
 
 // Maskable icons crop to a centered circle, so the glyph stays inside ~80%.

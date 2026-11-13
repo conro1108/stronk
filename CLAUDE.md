@@ -18,7 +18,7 @@ Dev knobs: `?seed=N` fakes N weeks of history through the real progression;
 | Form hint figures (pose keyframes) and cues per lift | `src/form.ts` |
 | What's saved, custom lifts, export/import | `src/store.ts` |
 | Views, session flow, swaps, editing past workouts, program editor, rest timer | `src/main.ts` |
-| Look | `src/style.css` |
+| Look (palette tokens up top; the one typeface is `src/fonts/archivo.woff2`) | `src/style.css` |
 | Fake history | `src/dev.ts` |
 | Offline caching | `public/sw.js` |
 

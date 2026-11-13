@@ -1,12 +1,12 @@
 // The whole UI: hash-routed views rendered as HTML strings into #app, with one
 // delegated click/change handler. Views: home (#/), session (#/go), lift
 // history (#/lift/id), past session (#/log/id), program editor (#/edit),
-// settings (#/settings). The rest timer and session clock live outside #app.
+// settings (#/settings). The rest timer lives outside #app.
 
 import './style.css';
 import { LIFTS, PROGRAMS, defaultSlot, liftInfo, related, type Workout } from './program';
-import { e1rm, fmtW, incFor, liftHistory, target, type Session } from './progress';
-import { addCustomLift, copyProgram, exportJson, importJson, load, save, uid, type Active, type Data } from './store';
+import { e1rm, fmtW, incFor, liftHistory, target, type Session, type Target } from './progress';
+import { addCustomLift, copyProgram, exportJson, importJson, load, save, uid, type Active, type ActiveSet, type Data } from './store';
 import { seed } from './dev';
 import { FORMS, cues, formSvg, hasForm } from './form';
 
@@ -38,49 +38,62 @@ function nextWorkout(): Workout {
   return ws[(ws.findIndex((w) => w.id === last.workout) + 1) % ws.length];
 }
 
-const KIND_BADGE: Record<string, string> = { up: '↑', same: '=', deload: '↓', new: 'new', scaled: '≈' };
+const svg = (d: string) => `<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+const IC = {
+  back: svg('M15 5l-7 7 7 7'),
+  up: svg('M12 19V6M6 12l6-6 6 6'),
+  down: svg('M12 5v13M6 12l6 6 6-6'),
+  x: svg('M6 6l12 12M18 6L6 18'),
+  tick: svg('M4 13l5 5L20 6'),
+};
+const back = (href = 'javascript:history.back()') => `<a class="back" href="${href}" aria-label="Back">${IC.back}</a>`;
 
-function targetLine(slot: Workout['slots'][number]) {
+// How a target differs from last time. "Same" says nothing.
+const MARK: Record<Target['kind'], string> = { up: IC.up, same: '', deload: IC.down, new: 'new', scaled: '≈' };
+const mark = (k: Target['kind']) => `<span class="mark ${k}">${MARK[k]}</span>`;
+
+function planRow(slot: Workout['slots'][number]) {
   const t = target(slot, D.history, D.unit);
   const reps = new Set(t.reps).size === 1 ? `${slot.sets}×${t.reps[0]}` : t.reps.join('·');
-  return { t, html: `<span class="badge ${t.kind}">${KIND_BADGE[t.kind]}</span><b>${fmtW(t.w)}</b><small>${D.unit}</small> <span class="reps">${reps}</span>` };
+  return `<li><a href="#/lift/${slot.lift}">${esc(liftInfo(slot.lift).name)}</a><b>${mark(t.kind)}${fmtW(t.w)}<small>${D.unit}</small></b><span class="reps">${reps}</span></li>`;
 }
 
 // ---------- views ----------
 
 function home() {
   const ws = D.program.workouts;
-  const w = ws.find((x) => x.id === picked) ?? nextWorkout();
-  const isNext = w.id === nextWorkout().id;
+  const next = nextWorkout();
+  const w = ws.find((x) => x.id === picked) ?? next;
   const a = D.active;
+  const sets = a?.lifts.flatMap((l) => l.sets) ?? [];
 
-  const card = a
-    ? `<section class="card hero">
-        <div class="eyebrow">In progress · ${Math.round((Date.now() - a.started) / 60000)} min</div>
+  const hero = a
+    ? `<section class="hero">
+        <p class="eyebrow live">In progress · ${Math.round((Date.now() - a.started) / 60000)} min</p>
         <h2>${esc(workoutName(a.workout))}</h2>
-        <p class="muted">${a.lifts.reduce((n, l) => n + l.sets.filter((s) => s.done).length, 0)} sets logged</p>
+        <p class="muted">${sets.filter((s) => s.done).length} of ${sets.length} sets logged</p>
         <button class="primary big" data-act="resume">Resume</button>
       </section>`
-    : `<section class="card hero">
-        <div class="eyebrow">${isNext ? 'Next up' : 'Picked'}</div>
+    : `<section class="hero">
+        <p class="eyebrow">${w.id === next.id ? 'Next up' : `Instead of ${esc(next.name)}`}</p>
         <h2>${esc(w.name)}</h2>
-        <ul class="plan">${w.slots
-          .map((s) => `<li><a href="#/lift/${s.lift}">${esc(liftInfo(s.lift).name)}</a><span>${targetLine(s).html}</span></li>`)
-          .join('')}</ul>
-        <button class="primary big" data-act="start" data-w="${w.id}">Start ${esc(w.name)}</button>
+        <ul class="plan">${w.slots.map(planRow).join('')}</ul>
+        <button class="primary big" data-act="start" data-w="${w.id}">Start</button>
+        ${
+          ws.length > 1
+            ? `<div class="days"><span>or</span>${ws
+                .filter((x) => x.id !== w.id)
+                .map((x) => `<button data-act="pick" data-w="${x.id}">${esc(x.name)}</button>`)
+                .join('')}</div>`
+            : ''
+        }
       </section>`;
-
-  const chips = a
-    ? ''
-    : `<div class="chips">${ws
-        .map((x) => `<button class="chip ${x.id === w.id ? 'on' : ''}" data-act="pick" data-w="${x.id}">${esc(x.name)}</button>`)
-        .join('')}</div>`;
 
   const recent = D.history.slice(0, 10);
   return `
-    <header class="top"><h1>stronk</h1><span class="muted">${esc(D.program.name)}</span>
-      <nav><a href="#/edit" aria-label="Edit program">✎</a><a href="#/settings" aria-label="Settings">⚙</a></nav></header>
-    ${card}${chips}
+    <header class="top"><h1 class="logo">stronk</h1>
+      <nav><a href="#/edit">Program</a><a href="#/settings">Settings</a></nav></header>
+    ${hero}
     <h3>Recent</h3>
     ${
       recent.length
@@ -90,45 +103,64 @@ function home() {
               <span class="muted">${s.lifts.reduce((n, l) => n + l.sets.length, 0)} sets</span></a></li>`,
             )
             .join('')}</ul>`
-        : `<p class="muted empty">Nothing yet. Targets start as guesses — fix the weights on day one and it learns from there.</p>`
+        : `<p class="muted hint">Nothing yet. Targets start as guesses — fix the weights on day one and it learns from there.</p>`
     }`;
 }
 
 const workoutName = (id: string) => D.program.workouts.find((w) => w.id === id)?.name ?? 'Workout';
 const sessionName = (s: Session) => s.name || workoutName(s.workout);
 
+// The set the steppers sit under: the one last touched, else the next unchecked.
+let now: { l: number; s: number } | null = null;
+function nextUndone(a: Active, from: number) {
+  for (let k = 0; k < a.lifts.length; k++) {
+    const l = (from + k) % a.lifts.length;
+    const s = a.lifts[l].sets.findIndex((x) => !x.done);
+    if (s >= 0) return { l, s };
+  }
+  return null;
+}
+
 function session(a: Active) {
+  if (!now || !a.lifts[now.l]?.sets[now.s]) now = nextUndone(a, now?.l ?? 0);
+  const all = a.lifts.flatMap((l) => l.sets);
+  const ticked = all.filter((s) => s.done).length;
   const lifts = a.lifts
     .map((l, li) => {
       const info = liftInfo(l.lift);
       const done = l.sets.length > 0 && l.sets.every((s) => s.done);
-      return `<section class="card lift ${done ? 'done' : ''}">
+      const inc = fmtW(incFor(l.lift, a.unit));
+      return `<section class="lift ${done ? 'done' : ''}">
         <header>${hasForm(l.lift) ? `<button class="thumb" data-act="form" data-id="${l.lift}" aria-label="Form tips">${formSvg(l.lift, 'form small', true)}</button>` : ''}
-          <a href="#/lift/${l.lift}"><h2>${esc(info.name)}</h2></a><span class="muted">${l.sets.length}×${l.reps[0]}–${l.reps[1]}</span></header>
+          <a href="#/lift/${l.lift}"><h2>${esc(info.name)}</h2></a><span class="range">${l.sets.length} × ${l.reps[0]}–${l.reps[1]}</span></header>
         ${openForm.has(l.lift) ? formCard(l.lift) : ''}
-        <p class="note"><span class="badge ${l.target.kind}">${KIND_BADGE[l.target.kind]}</span>${esc(l.target.note)}</p>
+        <p class="note">${mark(l.target.kind)}${esc(l.target.note)}</p>
         ${l.sets
-          .map(
-            (s, si) => `<div class="set ${s.done ? 'done' : ''}">
+          .map((s, si) => {
+            const at = `data-l="${li}" data-s="${si}"`;
+            return `<div class="set ${s.done ? 'done' : ''} ${now?.l === li && now.s === si ? 'now' : ''}">
             <span class="n">${si + 1}</span>
-            <input inputmode="decimal" data-f="w" data-l="${li}" data-s="${si}" value="${s.w ?? ''}" aria-label="weight"><small>${a.unit}</small>
+            <label class="fld"><input inputmode="decimal" data-f="w" ${at} value="${s.w ?? ''}" aria-label="weight"><small>${a.unit}</small></label>
             <span class="x">×</span>
-            <input inputmode="numeric" data-f="r" data-l="${li}" data-s="${si}" value="${s.r ?? ''}" aria-label="reps">
-            <button class="check" data-act="check" data-l="${li}" data-s="${si}" aria-label="done">✓</button>
-          </div>`,
-          )
+            <label class="fld"><input inputmode="numeric" data-f="r" ${at} value="${s.r ?? ''}" aria-label="reps"></label>
+            <button class="check" data-act="check" ${at} aria-label="done">${IC.tick}</button>
+            <div class="st w"><button data-act="step" data-f="w" data-d="-1" ${at}>−${inc}</button><button data-act="step" data-f="w" data-d="1" ${at}>+${inc}</button></div>
+            <div class="st r"><button data-act="step" data-f="r" data-d="-1" ${at}>−1</button><button data-act="step" data-f="r" data-d="1" ${at}>+1</button></div>
+          </div>`;
+          })
           .join('')}
-        <div class="row"><button data-act="addset" data-l="${li}">+ set</button><button data-act="rmset" data-l="${li}">− set</button>
-          ${liftPicker('swaplift', 'Swap…', `class="mini" data-l="${li}"`, l.lift)}<button data-act="rmlift" data-l="${li}" class="ghost">remove</button></div>
+        <div class="tools"><button data-act="addset" data-l="${li}">+ set</button><button data-act="rmset" data-l="${li}">− set</button>
+          ${liftPicker('swaplift', 'Swap…', `class="mini" data-l="${li}"`, l.lift)}<button data-act="rmlift" data-l="${li}">Remove</button></div>
       </section>`;
     })
     .join('');
   return `
-    <header class="top sticky"><a href="#/" aria-label="Home">‹</a><h1>${esc(workoutName(a.workout))}</h1>
-      <span id="clock" class="muted"></span><button class="primary" data-act="finish">Finish</button></header>
+    <header class="top sticky">${back('#/')}<h1>${esc(workoutName(a.workout))}</h1>
+      <span id="clock" class="muted"></span><button class="${ticked && ticked === all.length ? 'primary' : ''}" data-act="finish">Finish</button>
+      <i class="prog" style="--p:${all.length ? ticked / all.length : 0}"></i></header>
     ${lifts}
-    <div class="card add">${liftPicker('addlift', '+ Add exercise')}</div>
-    <button class="ghost wide" data-act="discard">Discard workout</button>`;
+    <div class="add">${liftPicker('addlift', '+ Add exercise')}</div>
+    <button class="wide danger" data-act="discard">Discard workout</button>`;
 }
 
 function liftPicker(act: string, label: string, extra = '', near?: string) {
@@ -156,21 +188,23 @@ function liftView(id: string) {
     .reverse();
   const pr = pts.reduce<(typeof pts)[number] | null>((b, p) => (!b || p.v > b.v ? p : b), null);
   return `
-    <header class="top"><a href="javascript:history.back()" aria-label="Back">‹</a><h1>${esc(info.name)}</h1></header>
-    ${hasForm(id) ? `<section class="card">${formCard(id)}</section>` : ''}
+    <header class="top">${back()}<h1>${esc(info.name)}</h1></header>
+    ${hasForm(id) ? formCard(id) : ''}
     ${
       pr
-        ? `<section class="card"><div class="eyebrow">Estimated 1RM</div>
+        ? `<section class="e1rm"><p class="eyebrow">Estimated 1RM</p>
           <div class="stat"><b>${Math.round(pts[pts.length - 1].v)}</b><small>${D.unit}</small>
-          <span class="muted">best ${Math.round(pr.v)} · ${fmtW(pr.best.w)}×${pr.best.r} on ${day(pr.date)}</span></div>
+          <span class="muted">Best ${Math.round(pr.v)} · ${fmtW(pr.best.w)}×${pr.best.r} on ${day(pr.date)}</span></div>
           ${pts.length > 1 ? chart(pts) : ''}</section>`
-        : `<p class="muted empty">No sets logged yet.</p>`
+        : `<p class="muted hint">No sets logged yet.</p>`
     }
-    ${related(id).length ? `<p class="muted kin">Similar: ${related(id).map((l) => `<a href="#/lift/${l.id}">${esc(l.name)}</a>`).join(' · ')}</p>` : ''}
-    <button class="ghost wide" data-act="variant" data-id="${id}">+ Another version (a different machine)</button>
-    <section class="card prefs"><label>Weight jump <input inputmode="decimal" data-pref="inc" data-id="${id}" value="${fmtW(incFor(id, D.unit))}"><small>${D.unit}</small></label>
+    <h3>Setup</h3>
+    <section class="prefs"><label>Weight jump <input inputmode="decimal" data-pref="inc" data-id="${id}" value="${fmtW(incFor(id, D.unit))}"><small>${D.unit}</small></label>
       <label>Rest <input inputmode="numeric" data-pref="rest" data-id="${id}" value="${info.rest}"><small>sec</small></label>
       <p class="muted">Fixed bars or a machine that goes 10 at a time? Set 10 and targets only land on weights that exist.</p></section>
+    ${related(id).length ? `<p class="muted kin">Similar: ${related(id).map((l) => `<a href="#/lift/${l.id}">${esc(l.name)}</a>`).join(' · ')}</p>` : ''}
+    <button class="wide" data-act="variant" data-id="${id}">+ Another version (a different machine)</button>
+    ${past.length ? '<h3>History</h3>' : ''}
     <ul class="list">${past
       .map(
         (p) => `<li><a href="#/log/${p.session.id}"><span>${day(p.session.date)}</span>
@@ -204,90 +238,92 @@ function formCard(id: string) {
 
 // Dev page: every figure at once, to tune poses in form.ts.
 function formsView() {
-  return `<header class="top"><a href="#/">‹</a><h1>Forms</h1></header><div class="formgrid">${Object.keys(FORMS)
+  return `<header class="top">${back('#/')}<h1>Forms</h1></header><div class="formgrid">${Object.keys(FORMS)
     .map((id) => `<a href="#/lift/${id}">${formSvg(id, 'form big')}<span>${esc(liftInfo(id).name)}</span></a>`)
     .join('')}</div>`;
 }
 
 function logView(id: string) {
   const s = D.history.find((x) => x.id === id);
-  if (!s) return `<header class="top"><a href="#/">‹</a><h1>Not found</h1></header>`;
+  if (!s) return `<header class="top">${back('#/')}<h1>Not found</h1></header>`;
   const editing = editingLog === id;
-  const top = `<header class="top"><a href="javascript:history.back()" aria-label="Back">‹</a><h1>${esc(sessionName(s))}</h1>
-      <span class="muted">${day(s.date)}</span><button class="${editing ? 'primary' : ''}" data-act="logedit" style="margin-left:auto">${editing ? 'Done' : 'Edit'}</button></header>`;
+  const top = `<header class="top">${back()}<h1>${esc(sessionName(s))}</h1>
+      <button class="${editing ? 'primary' : ''}" data-act="logedit">${editing ? 'Done' : 'Edit'}</button></header>
+      <p class="eyebrow">${day(s.date)}</p>`;
   if (editing) {
     return `${top}
     ${s.lifts
       .map(
-        (l, li) => `<section class="card lift"><header><h2>${esc(liftInfo(l.lift).name)}</h2></header>
+        (l, li) => `<section class="lift"><header><h2>${esc(liftInfo(l.lift).name)}</h2></header>
         ${l.sets
           .map(
             (x, si) => `<div class="set log"><span class="n">${si + 1}</span>
-            <input inputmode="decimal" data-lg="w" data-l="${li}" data-s="${si}" value="${fmtW(x.w)}" aria-label="weight"><small>${s.unit}</small>
-            <span class="x">×</span><input inputmode="numeric" data-lg="r" data-l="${li}" data-s="${si}" value="${x.r}" aria-label="reps"></div>`,
+            <label class="fld"><input inputmode="decimal" data-lg="w" data-l="${li}" data-s="${si}" value="${fmtW(x.w)}" aria-label="weight"><small>${s.unit}</small></label>
+            <span class="x">×</span><label class="fld"><input inputmode="numeric" data-lg="r" data-l="${li}" data-s="${si}" value="${x.r}" aria-label="reps"></label></div>`,
           )
           .join('')}
-        <div class="row"><button data-act="logaddset" data-l="${li}">+ set</button><button data-act="logrmset" data-l="${li}">− set</button>
-          ${liftPicker('logswap', 'Swap…', `class="mini" data-l="${li}"`, l.lift)}<button data-act="logrmlift" data-l="${li}" class="ghost">remove</button></div>
+        <div class="tools"><button data-act="logaddset" data-l="${li}">+ set</button><button data-act="logrmset" data-l="${li}">− set</button>
+          ${liftPicker('logswap', 'Swap…', `class="mini" data-l="${li}"`, l.lift)}<button data-act="logrmlift" data-l="${li}">Remove</button></div>
       </section>`,
       )
       .join('')}
-    <div class="card add">${liftPicker('logadd', '+ Add exercise')}</div>
-    <p class="muted empty">Swapping keeps the sets and moves them to the other exercise's history, so the original lift's targets ignore this workout.</p>`;
+    <div class="add">${liftPicker('logadd', '+ Add exercise')}</div>
+    <p class="muted hint">Swapping keeps the sets and moves them to the other exercise's history, so the original lift's targets ignore this workout.</p>`;
   }
   return `${top}
-    ${s.lifts
+    <ul class="list log">${s.lifts
       .map(
-        (l) => `<section class="card"><a href="#/lift/${l.lift}"><h2>${esc(liftInfo(l.lift).name)}</h2></a>
-        <p class="sets">${l.sets.map((x) => `${fmtW(x.w)}×${x.r}`).join(', ')} <small>${s.unit}</small></p></section>`,
+        (l) => `<li><a href="#/lift/${l.lift}"><b>${esc(liftInfo(l.lift).name)}</b>
+        <span class="sets">${l.sets.map((x) => `${fmtW(x.w)}×${x.r}`).join(', ')} <small>${s.unit}</small></span></a></li>`,
       )
-      .join('')}
-    <button class="ghost wide danger" data-act="dellog" data-id="${s.id}">Delete this workout</button>`;
+      .join('')}</ul>
+    <button class="wide danger" data-act="dellog" data-id="${s.id}">Delete this workout</button>`;
 }
 
 function editView() {
   const p = D.program;
   return `
-    <header class="top"><a href="#/" aria-label="Home">‹</a><h1>Program</h1></header>
+    <header class="top">${back('#/')}<h1>Program</h1></header>
     <label class="field">Name <input data-edit="pname" value="${esc(p.name)}"></label>
     ${p.workouts
       .map(
-        (w, wi) => `<section class="card">
-        <header class="row"><input class="title" data-edit="wname" data-w="${wi}" value="${esc(w.name)}">
-          <button class="ghost" data-act="wmove" data-w="${wi}" data-d="-1" aria-label="Move day up">↑</button>
-          <button class="ghost danger" data-act="wdel" data-w="${wi}" aria-label="Delete day">✕</button></header>
+        (w, wi) => `<section class="day">
+        <header><input class="title" data-edit="wname" data-w="${wi}" value="${esc(w.name)}" aria-label="Day name">
+          <button class="icon" data-act="wmove" data-w="${wi}" data-d="-1" aria-label="Move day up">${IC.up}</button>
+          <button class="icon" data-act="wdel" data-w="${wi}" aria-label="Delete day">${IC.x}</button></header>
         ${w.slots
           .map(
             (s, si) => `<div class="slot">
             <span class="name">${esc(liftInfo(s.lift).name)}</span>
             <input inputmode="numeric" data-edit="sets" data-w="${wi}" data-s="${si}" value="${s.sets}" aria-label="sets"><span class="x">×</span>
-            <input inputmode="numeric" data-edit="min" data-w="${wi}" data-s="${si}" value="${s.reps[0]}" aria-label="min reps">–<input inputmode="numeric" data-edit="max" data-w="${wi}" data-s="${si}" value="${s.reps[1]}" aria-label="max reps">
-            <button class="ghost" data-act="smove" data-w="${wi}" data-s="${si}" aria-label="Move up">↑</button>
-            <button class="ghost danger" data-act="sdel" data-w="${wi}" data-s="${si}" aria-label="Remove">✕</button>
+            <input inputmode="numeric" data-edit="min" data-w="${wi}" data-s="${si}" value="${s.reps[0]}" aria-label="min reps"><span class="x">–</span><input inputmode="numeric" data-edit="max" data-w="${wi}" data-s="${si}" value="${s.reps[1]}" aria-label="max reps">
+            <button class="icon" data-act="smove" data-w="${wi}" data-s="${si}" aria-label="Move up">${IC.up}</button>
+            <button class="icon" data-act="sdel" data-w="${wi}" data-s="${si}" aria-label="Remove">${IC.x}</button>
           </div>`,
           )
           .join('')}
-        ${liftPicker('sadd', '+ Add exercise', `data-w="${wi}"`)}
+        <div class="add">${liftPicker('sadd', '+ Add exercise', `data-w="${wi}"`)}</div>
       </section>`,
       )
       .join('')}
-    <button class="wide" data-act="wadd">+ Add day</button>
-    <p class="muted empty">Sets × min–max reps. Targets climb a rep at a time until every set hits the max, then add weight. History follows the exercise, not the day, so editing here never loses progress.</p>`;
+    <button class="addday" data-act="wadd">+ Add day</button>
+    <p class="muted hint">Sets × min–max reps. Targets climb a rep at a time until every set hits the max, then add weight. History follows the exercise, not the day, so editing here never loses progress.</p>`;
 }
 
 function settingsView() {
   return `
-    <header class="top"><a href="#/" aria-label="Home">‹</a><h1>Settings</h1></header>
-    <section class="card"><h2>Units</h2><div class="chips">
-      ${(['lb', 'kg'] as const).map((u) => `<button class="chip ${D.unit === u ? 'on' : ''}" data-act="unit" data-u="${u}">${u}</button>`).join('')}
-    </div></section>
-    <section class="card"><h2>Start from a template</h2><p class="muted">Replaces your program (history is kept).</p>
-      ${PROGRAMS.map((p) => `<button class="wide" data-act="template" data-p="${p.id}"><b>${esc(p.name)}</b> <span class="muted">${esc(p.blurb)}</span></button>`).join('')}
-    </section>
-    <section class="card"><h2>Backup</h2><p class="muted">Everything lives on this device only. Export now and then.</p>
-      <div class="row"><button data-act="export">Export</button><label class="button">Import<input type="file" accept="application/json" data-act="import" hidden></label></div>
-    </section>
-    <button class="ghost wide danger" data-act="wipe">Erase all history</button>`;
+    <header class="top">${back('#/')}<h1>Settings</h1></header>
+    <h3>Units</h3>
+    <div class="seg">
+      ${(['lb', 'kg'] as const).map((u) => `<button class="${D.unit === u ? 'on' : ''}" data-act="unit" data-u="${u}">${u}</button>`).join('')}
+    </div>
+    <h3>Start from a template</h3>
+    <p class="muted hint">Replaces your program. History is kept.</p>
+    ${PROGRAMS.map((p) => `<button class="pick" data-act="template" data-p="${p.id}"><b>${esc(p.name)}</b><span class="muted">${esc(p.blurb)}</span></button>`).join('')}
+    <h3>Backup</h3>
+    <p class="muted hint">Everything lives on this device only. Export now and then.</p>
+    <div class="row"><button data-act="export">Export</button><label class="button">Import<input type="file" accept="application/json" data-act="import" hidden></label></div>
+    <button class="wide danger" data-act="wipe">Erase all history</button>`;
 }
 
 // ---------- render ----------
@@ -326,6 +362,7 @@ function start(wid: string) {
     }),
   };
   picked = null;
+  now = null;
   commit();
   go('#/go');
 }
@@ -384,7 +421,16 @@ app.addEventListener('click', (e) => {
     case 'check': {
       const set = lift!.sets[+s!];
       set.done = !set.done;
+      now = set.done ? nextUndone(a!, +l!) : { l: +l!, s: +s! };
       if (set.done) startRest(liftInfo(lift!.lift).rest);
+      break;
+    }
+    case 'step': {
+      const set = lift!.sets[+s!];
+      const d = +el.dataset.d!;
+      if (el.dataset.f === 'r') set.r = Math.max(0, (set.r ?? 0) + d);
+      else setWeight(lift!.sets, +s!, Math.max(0, Math.round(((set.w ?? 0) + d * incFor(lift!.lift, a!.unit)) * 100) / 100));
+      now = { l: +l!, s: +s! };
       break;
     }
     case 'addset': {
@@ -533,8 +579,17 @@ app.addEventListener('change', async (e) => {
   render();
 });
 
-// Typing in a set updates state without re-rendering (keeps focus). Changing a
-// weight carries it down to later unchecked sets that had the same weight.
+// Changing a weight carries it down to later unchecked sets that had the same
+// weight. Returns one past the last set changed.
+function setWeight(sets: ActiveSet[], i: number, v: number | null) {
+  const old = sets[i].w;
+  sets[i].w = v;
+  let j = i + 1;
+  for (; j < sets.length && !sets[j].done && sets[j].w === old; j++) sets[j].w = v;
+  return j;
+}
+
+// Typing in a set updates state without re-rendering (keeps focus).
 app.addEventListener('input', (e) => {
   const el = e.target as HTMLInputElement;
   const { f, l, s } = el.dataset;
@@ -544,18 +599,19 @@ app.addEventListener('input', (e) => {
   if (v != null && isNaN(v)) return;
   if (f === 'r') sets[+s!].r = v;
   else {
-    const old = sets[+s!].w;
-    sets[+s!].w = v;
-    for (let i = +s! + 1; i < sets.length; i++) {
-      if (sets[i].done || sets[i].w !== old) break;
-      sets[i].w = v;
-      app.querySelector<HTMLInputElement>(`input[data-f="w"][data-l="${l}"][data-s="${i}"]`)!.value = el.value;
-    }
+    const end = setWeight(sets, +s!, v);
+    for (let i = +s! + 1; i < end; i++) app.querySelector<HTMLInputElement>(`input[data-f="w"][data-l="${l}"][data-s="${i}"]`)!.value = el.value;
   }
   commit();
 });
 app.addEventListener('focusin', (e) => {
-  if ((e.target as HTMLElement).matches('.set input')) (e.target as HTMLInputElement).select();
+  const el = e.target as HTMLInputElement;
+  if (!el.matches('.set input')) return;
+  el.select();
+  if (!el.dataset.f) return;
+  now = { l: +el.dataset.l!, s: +el.dataset.s! };
+  app.querySelector('.set.now')?.classList.remove('now');
+  el.closest('.set')!.classList.add('now');
 });
 
 // ---------- rest timer, clock, wake lock ----------
