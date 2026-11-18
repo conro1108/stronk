@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { target, type Session } from './progress';
+import { adjust, target, type Session } from './progress';
 
 const bench = { lift: 'bench', sets: 3, reps: [5, 8] as [number, number] };
 let n = 0;
@@ -30,6 +30,20 @@ describe('target', () => {
     expect(target(bench, hist(mix([100, 8], [100, 7], [110, 3])), 'lb')).toMatchObject({ kind: 'same', w: 100, reps: [8, 8, 7] });
     expect(target(bench, hist(mix([60, 10], [100, 8], [100, 8], [100, 8])), 'lb')).toMatchObject({ kind: 'up', w: 105 });
     expect(target(bench, hist(sess(135, [6, 6]), sess(135, [7, 6])), 'lb')).toMatchObject({ kind: 'same', w: 135, reps: [8, 7, 5] });
+  });
+  it('how it felt: heavy repeats, light climbs two, a weak day never sets back', () => {
+    const felt = (x: Session, feel: 'heavy' | 'light') => ({ ...x, lifts: [{ ...x.lifts[0], feel }] });
+    expect(target(bench, hist(felt(sess(135, [6, 6, 6]), 'heavy')), 'lb')).toMatchObject({ w: 135, reps: [6, 6, 6] });
+    expect(target(bench, hist(felt(sess(135, [8, 8, 8]), 'heavy')), 'lb')).toMatchObject({ w: 135, reps: [8, 8, 8] });
+    expect(target(bench, hist(felt(sess(135, [6, 6, 6]), 'light')), 'lb')).toMatchObject({ w: 135, reps: [8, 8, 8] });
+    const weak = { ...sess(125, [5, 5, 4]), feel: 'weak' as const };
+    expect(target(bench, hist(sess(135, [7, 6, 6]), weak), 'lb')).toMatchObject({ w: 135, reps: [8, 7, 7] });
+  });
+  it('adjusts today for how you feel going in', () => {
+    const t = target(bench, hist(sess(135, [6, 6, 5])), 'lb'); // 135 × 7·7·6
+    expect(adjust(t, bench, 'lb', 'amped')).toMatchObject({ w: 135, reps: [8, 8, 7] });
+    expect(adjust(t, bench, 'lb', 'weak')).toMatchObject({ w: 135, reps: [6, 6, 5] });
+    expect(adjust({ ...t, reps: [5, 5, 5] }, bench, 'lb', 'weak')).toMatchObject({ w: 125, reps: [5, 5, 5] });
   });
   it('guesses a new lift from a related one', () => {
     const t = target({ ...bench, lift: 'chest-press' }, hist(sess(190, [8, 8, 8])), 'lb');

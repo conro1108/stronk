@@ -14,7 +14,7 @@ Dev knobs: `?seed=N` fakes N weeks of history through the real progression;
 | Want to change… | File |
 |---|---|
 | Lift catalog, template programs, starting weights, increments, rest times, default rep ranges | `src/program.ts` |
-| How targets are chosen (double progression, deload, cross-range scaling) | `src/progress.ts` |
+| How targets are chosen (double progression, deload, cross-range scaling, how-it-felt nudges) | `src/progress.ts` |
 | Form hint figures (pose keyframes) and cues per lift | `src/form.ts` |
 | What's saved, custom lifts, export/import | `src/store.ts` |
 | Views, session flow, swaps, editing past workouts, program editor, rest timer | `src/main.ts` |

@@ -81,6 +81,15 @@ input:focus { border-color: var(--go); }
 .seg button { border: 0; border-radius: 0; min-width: 84px; color: var(--muted); }
 .seg .on { background: var(--ink); color: var(--bg); }
 .row { display: flex; gap: 8px; margin-top: 12px; align-items: center; }
+/* How you feel: going in (home) and per lift once its sets are done. Off days
+   in pink chalk, good ones in yellow. */
+.ask { font-size: 14px; color: var(--muted); margin: 18px 0 0; }
+.seg.feel, .seg.rate { display: flex; margin-top: 8px; }
+.seg.feel button, .seg.rate button { flex: 1; min-width: 0; text-transform: capitalize; }
+.seg.rate button { min-height: 40px; font-size: 14px; }
+.seg [data-v=weak].on, .seg [data-v=heavy].on { background: var(--warn); color: var(--go-ink); }
+.seg [data-v=amped].on, .seg [data-v=light].on { background: var(--go); color: var(--go-ink); }
+.mood { font-size: 13px; font-weight: 650; text-transform: uppercase; color: var(--muted); }
 
 /* ---------- page top ---------- */
 
@@ -130,7 +139,7 @@ input:focus { border-color: var(--go); }
 
 .lift { padding-top: 26px; }
 .top + .lift { padding-top: 14px; }
-.lift.done { opacity: 0.5; }
+.lift.done > :not(.rate, .ask) { opacity: 0.5; } /* the rating stays bright: it wants an answer */
 .lift header { display: flex; align-items: center; gap: 12px; padding-bottom: 10px; border-bottom: var(--rule); }
 .lift header > a { min-width: 0; }
 .range { margin-left: auto; color: var(--muted); font-size: 15px; white-space: nowrap; }

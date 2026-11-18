@@ -5,7 +5,7 @@
 
 import './style.css';
 import { LIFTS, PROGRAMS, defaultSlot, liftInfo, related, type Workout } from './program';
-import { e1rm, fmtW, incFor, liftHistory, target, type Session, type Target } from './progress';
+import { adjust, e1rm, fmtW, incFor, liftHistory, target, type Effort, type Readiness, type Session, type Target } from './progress';
 import { addCustomLift, copyProgram, exportJson, importJson, load, save, uid, type Active, type ActiveSet, type Data } from './store';
 import { seed } from './dev';
 import { FORMS, cues, formSvg, hasForm } from './form';
@@ -28,6 +28,7 @@ const go = (hash: string) => (location.hash = hash);
 let picked: string | null = null; // workout previewed on home, if not the rotation's pick
 const openForm = new Set<string>(); // lifts whose form hint is expanded in the session
 let editingLog: string | null = null; // past session open for editing
+let feeling: Readiness = 'normal'; // picked on home before Start
 
 // ---------- derived ----------
 
@@ -52,8 +53,13 @@ const back = (href = 'javascript:history.back()') => `<a class="back" href="${hr
 const MARK: Record<Target['kind'], string> = { up: IC.up, same: '', deload: IC.down, new: 'new', scaled: '≈' };
 const mark = (k: Target['kind']) => `<span class="mark ${k}">${MARK[k]}</span>`;
 
+// Today's target: the progression, shifted for how you feel going in.
+const todays = (slot: Workout['slots'][number], feel = D.active?.feel) => adjust(target(slot, D.history, D.unit), slot, D.unit, feel);
+const seg = <T extends string>(act: string, cur: T, opts: T[], extra = '') =>
+  `<div class="seg ${act}">${opts.map((o) => `<button class="${cur === o ? 'on' : ''}" data-act="${act}" data-v="${o}" ${extra}>${o}</button>`).join('')}</div>`;
+
 function planRow(slot: Workout['slots'][number]) {
-  const t = target(slot, D.history, D.unit);
+  const t = todays(slot, feeling);
   const reps = new Set(t.reps).size === 1 ? `${slot.sets}×${t.reps[0]}` : t.reps.join('·');
   return `<li><a href="#/lift/${slot.lift}">${esc(liftInfo(slot.lift).name)}</a><b>${mark(t.kind)}${fmtW(t.w)}<small>${D.unit}</small></b><span class="reps">${reps}</span></li>`;
 }
@@ -78,6 +84,7 @@ function home() {
         <p class="eyebrow">${w.id === next.id ? 'Next up' : `Instead of ${esc(next.name)}`}</p>
         <h2>${esc(w.name)}</h2>
         <ul class="plan">${w.slots.map(planRow).join('')}</ul>
+        <p class="ask">Going in feeling</p>${seg('feel', feeling, ['weak', 'normal', 'amped'])}
         <button class="primary big" data-act="start" data-w="${w.id}">Start</button>
         ${
           ws.length > 1
@@ -149,13 +156,14 @@ function session(a: Active) {
           </div>`;
           })
           .join('')}
+        ${done ? `<p class="ask">How'd it feel?</p>${seg('rate', l.feel ?? 'normal', ['heavy', 'normal', 'light'] as Effort[], `data-l="${li}"`)}` : ''}
         <div class="tools"><button data-act="addset" data-l="${li}">+ set</button><button data-act="rmset" data-l="${li}">− set</button>
           ${liftPicker('swaplift', 'Swap…', `class="mini" data-l="${li}"`, l.lift)}<button data-act="rmlift" data-l="${li}">Remove</button></div>
       </section>`;
     })
     .join('');
   return `
-    <header class="top sticky">${back('#/')}<h1>${esc(workoutName(a.workout))}</h1>
+    <header class="top sticky">${back('#/')}<h1>${esc(workoutName(a.workout))}</h1>${a.feel ? `<span class="mood">${a.feel}</span>` : ''}
       <span id="clock" class="muted"></span><button class="${ticked && ticked === all.length ? 'primary' : ''}" data-act="finish">Finish</button>
       <i class="prog" style="--p:${all.length ? ticked / all.length : 0}"></i></header>
     ${lifts}
@@ -208,7 +216,7 @@ function liftView(id: string) {
     <ul class="list">${past
       .map(
         (p) => `<li><a href="#/log/${p.session.id}"><span>${day(p.session.date)}</span>
-        <span class="sets">${p.log.sets.map((s) => `${fmtW(s.w)}×${s.r}`).join(', ')}</span></a></li>`,
+        <span class="sets">${p.log.sets.map((s) => `${fmtW(s.w)}×${s.r}`).join(', ')}${p.log.feel ? ` <small>felt ${p.log.feel}</small>` : ''}</span></a></li>`,
       )
       .join('')}</ul>`;
 }
@@ -249,7 +257,7 @@ function logView(id: string) {
   const editing = editingLog === id;
   const top = `<header class="top">${back()}<h1>${esc(sessionName(s))}</h1>
       <button class="${editing ? 'primary' : ''}" data-act="logedit">${editing ? 'Done' : 'Edit'}</button></header>
-      <p class="eyebrow">${day(s.date)}</p>`;
+      <p class="eyebrow">${day(s.date)}${s.feel ? ` · went in ${s.feel}` : ''}</p>`;
   if (editing) {
     return `${top}
     ${s.lifts
@@ -274,7 +282,7 @@ function logView(id: string) {
     <ul class="list log">${s.lifts
       .map(
         (l) => `<li><a href="#/lift/${l.lift}"><b>${esc(liftInfo(l.lift).name)}</b>
-        <span class="sets">${l.sets.map((x) => `${fmtW(x.w)}×${x.r}`).join(', ')} <small>${s.unit}</small></span></a></li>`,
+        <span class="sets">${l.sets.map((x) => `${fmtW(x.w)}×${x.r}`).join(', ')} <small>${s.unit}${l.feel ? ` · felt ${l.feel}` : ''}</small></span></a></li>`,
       )
       .join('')}</ul>
     <button class="wide danger" data-act="dellog" data-id="${s.id}">Delete this workout</button>`;
@@ -356,12 +364,14 @@ function start(wid: string) {
     workout: w.id,
     started: Date.now(),
     unit: D.unit,
+    ...(feeling !== 'normal' && { feel: feeling }),
     lifts: w.slots.map((s) => {
-      const t = target(s, D.history, D.unit);
+      const t = todays(s, feeling);
       return { lift: s.lift, reps: [...s.reps], target: t, sets: t.reps.map((r) => ({ w: t.w, r, done: false })) };
     }),
   };
   picked = null;
+  feeling = 'normal';
   now = null;
   commit();
   go('#/go');
@@ -370,12 +380,12 @@ function start(wid: string) {
 function finish() {
   const a = D.active!;
   const lifts = a.lifts
-    .map((l) => ({ lift: l.lift, reps: l.reps, sets: l.sets.filter((s) => s.done && s.w != null && s.r).map((s) => ({ w: s.w!, r: s.r! })) }))
+    .map((l) => ({ lift: l.lift, reps: l.reps, sets: l.sets.filter((s) => s.done && s.w != null && s.r).map((s) => ({ w: s.w!, r: s.r! })), ...(l.feel && { feel: l.feel }) }))
     .filter((l) => l.sets.length);
   const undone = a.lifts.reduce((n, l) => n + l.sets.filter((s) => !s.done).length, 0);
   if (!lifts.length) return void (confirm('No sets checked off. Discard this workout?') && discard());
   if (undone && !confirm(`${undone} set${undone > 1 ? 's' : ''} not checked off — they won't be saved. Finish anyway?`)) return;
-  const s: Session = { id: uid(), program: a.program, workout: a.workout, name: workoutName(a.workout), date: new Date().toISOString(), unit: a.unit, lifts };
+  const s: Session = { id: uid(), program: a.program, workout: a.workout, name: workoutName(a.workout), date: new Date().toISOString(), unit: a.unit, lifts, ...(a.feel && { feel: a.feel }) };
   D.history.unshift(s);
   D.active = null;
   stopRest();
@@ -416,6 +426,13 @@ app.addEventListener('click', (e) => {
     case 'start': return start(w!);
     case 'resume': return go('#/go');
     case 'pick': picked = w!; return render();
+    case 'feel': feeling = el.dataset.v as Readiness; return render();
+    case 'rate': {
+      const v = el.dataset.v as Effort;
+      if (v === 'normal') delete lift!.feel;
+      else lift!.feel = v;
+      break;
+    }
     case 'finish': return finish();
     case 'discard': return void (confirm('Throw away this workout?') && discard());
     case 'check': {
@@ -522,7 +539,7 @@ app.addEventListener('change', async (e) => {
       // in the new lift's own rep range (leg extensions don't inherit squat's 5–8).
       const l = D.active!.lifts[+el.dataset.l!];
       const reps = defaultSlot(id).reps;
-      const t = target({ lift: id, sets: l.sets.length, reps }, D.history, D.unit);
+      const t = todays({ lift: id, sets: l.sets.length, reps });
       Object.assign(l, { lift: id, reps, target: t, sets: l.sets.map((x, i) => (x.done ? x : { w: t.w, r: t.reps[i], done: false })) });
     } else if (act === 'logswap') logLift(+el.dataset.l!).lift = id;
     else {
@@ -551,7 +568,7 @@ app.addEventListener('change', async (e) => {
     if (!id) return;
     if (act === 'addlift') {
       const slot = defaultSlot(id);
-      const t = target(slot, D.history, D.unit);
+      const t = todays(slot);
       D.active!.lifts.push({ lift: id, reps: slot.reps, target: t, sets: t.reps.map((r) => ({ w: t.w, r, done: false })) });
     } else {
       D.program.workouts[+el.dataset.w!].slots.push(defaultSlot(id));

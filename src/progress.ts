@@ -8,13 +8,19 @@
 // A lift never done before borrows from a related lift (same `kin`), scaled by the ratio of their starting weights.
 // If the user set a lift's jump, suggestions land on multiples of it, so a
 // fixed-bar rack in 10s never gets told 75.
+// How it felt nudges this, lightly: a lift rated heavy repeats instead of
+// climbing, one rated light climbs two reps. A weak day never sets a lift
+// back (targets come from it or the session before, whichever is stronger),
+// and `adjust` shifts today's targets about a rep for how you feel going in.
 
 import { liftInfo, related, type Slot } from './program';
 
 export type Unit = 'lb' | 'kg';
 export type SetLog = { w: number; r: number };
-export type LiftLog = { lift: string; reps: [number, number]; sets: SetLog[] };
-export type Session = { id: string; program: string; workout: string; name?: string; date: string; unit: Unit; lifts: LiftLog[] };
+export type Readiness = 'weak' | 'normal' | 'amped';
+export type Effort = 'heavy' | 'normal' | 'light';
+export type LiftLog = { lift: string; reps: [number, number]; sets: SetLog[]; feel?: Effort };
+export type Session = { id: string; program: string; workout: string; name?: string; date: string; unit: Unit; lifts: LiftLog[]; feel?: Readiness };
 
 export type Target = {
   w: number;
@@ -64,7 +70,9 @@ function work(log: LiftLog) {
   return { w, reps };
 }
 
-export function target(slot: Slot, history: Session[], unit: Unit): Target {
+const stronger = (a: Target, b: Target) => (a.w !== b.w ? a.w > b.w : a.reps.reduce((x, y) => x + y, 0) >= b.reps.reduce((x, y) => x + y, 0));
+
+export function target(slot: Slot, history: Session[], unit: Unit, keepWeak = false): Target {
   const [min, max] = slot.reps;
   const n = slot.sets;
   const flat = (r: number) => Array(n).fill(r);
@@ -100,10 +108,19 @@ export function target(slot: Slot, history: Session[], unit: Unit): Target {
     return { w, reps: flat(min), kind: 'scaled', note: `Scaled from ${fmtBest(other.sets)} at ${other.reps[0]}–${other.reps[1]}.` };
   }
 
+  if (!keepWeak && same.length > 1 && same[0].session.feel === 'weak') {
+    const mine = target(slot, history, unit, true);
+    const before = target(slot, history.filter((s) => s !== same[0].session), unit);
+    return stronger(mine, before) ? mine : { ...before, note: `Skipping last time's weak day. ${before.note}` };
+  }
+
   const last = work(same[0].log);
   const W = last.w;
+  const felt = same[0].log.feel;
 
   if (last.reps.length >= n && last.reps.every((r) => r >= max)) {
+    if (felt === 'heavy') return { w: W, reps: flat(max), kind: 'same', note: `Hit ${max}s across but it felt heavy — once more here.` };
+    if (felt === 'light') return { w: W + incFor(slot.lift, unit), reps: flat(Math.min(max, min + 1)), kind: 'up', note: `Hit ${max}s across and it felt light — add weight.` };
     return { w: W + incFor(slot.lift, unit), reps: flat(min), kind: 'up', note: `Hit ${max}s across last time — add weight.` };
   }
 
@@ -113,9 +130,25 @@ export function target(slot: Slot, history: Session[], unit: Unit): Target {
     return { w: floorTo(W * 0.9, grid(slot.lift, unit)), reps: flat(min), kind: 'deload', note: `Stalled twice at ${fmtW(W)} — back off 10% and build again.` };
   }
 
-  const reps = Array.from({ length: n }, (_, i) => Math.min(max, Math.max(min, (last.reps[i] ?? min - 1) + 1)));
+  const step = felt === 'heavy' ? 0 : felt === 'light' ? 2 : 1;
+  const reps = Array.from({ length: n }, (_, i) => Math.min(max, Math.max(min, (last.reps[i] ?? min - 1) + step)));
   const mixed = same[0].log.sets.some((x) => x.w !== W);
-  return { w: W, reps, kind: 'same', note: `Last: ${last.reps.join('·')}${mixed ? ` at ${fmtW(W)}` : ''}. Beat it by a rep.` };
+  const ask = felt === 'heavy' ? 'Felt heavy — match it.' : felt === 'light' ? 'Felt light — beat it by two.' : 'Beat it by a rep.';
+  return { w: W, reps, kind: 'same', note: `Last: ${last.reps.join('·')}${mixed ? ` at ${fmtW(W)}` : ''}. ${ask}` };
+}
+
+/** Today's target for how you feel going in: about a rep's worth either way.
+ * Weak drops a rep, or 5% when sets are already at the bottom of the range
+ * (unless the plates are too coarse for 5%, then reps it is). */
+export function adjust(t: Target, slot: Slot, unit: Unit, feel: Readiness = 'normal'): Target {
+  const [min, max] = slot.reps;
+  if (feel === 'amped' && t.reps.some((r) => r < max)) return { ...t, reps: t.reps.map((r) => Math.min(max, r + 1)), note: `${t.note} Amped: a rep more.` };
+  if (feel !== 'weak') return t;
+  const fewer = { ...t, reps: t.reps.map((r) => Math.max(min, r - 1)), note: `${t.note} Weak day: a rep less.` };
+  if (t.reps.every((r) => r > min)) return fewer;
+  const w = floorTo(t.w * 0.95, grid(slot.lift, unit));
+  if (w > 0 && w < t.w && w >= t.w * 0.9) return { ...t, w, kind: t.kind === 'up' ? 'same' : t.kind, note: `${t.note} Weak day: 5% lighter.` };
+  return fewer.reps.some((r, i) => r < t.reps[i]) ? fewer : t;
 }
 
 /** Trim float noise from unit conversion: 102.06 -> 102, 61.25 stays. */

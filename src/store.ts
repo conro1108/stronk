@@ -5,11 +5,11 @@
 // app just reads liftInfo().
 
 import { LIFTS, PROGRAMS, type Lift, type Program } from './program';
-import type { Session, Target, Unit } from './progress';
+import type { Effort, Readiness, Session, Target, Unit } from './progress';
 
 export type ActiveSet = { w: number | null; r: number | null; done: boolean };
-export type ActiveLift = { lift: string; reps: [number, number]; target: Target; sets: ActiveSet[] };
-export type Active = { program: string; workout: string; started: number; unit: Unit; lifts: ActiveLift[] };
+export type ActiveLift = { lift: string; reps: [number, number]; target: Target; sets: ActiveSet[]; feel?: Effort };
+export type Active = { program: string; workout: string; started: number; unit: Unit; lifts: ActiveLift[]; feel?: Readiness };
 
 export type Data = {
   v: 1;
