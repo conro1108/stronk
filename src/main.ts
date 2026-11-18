@@ -674,6 +674,8 @@ function buzz() {
     g.gain.setValueAtTime(0.2, ctx.currentTime);
     g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
     o.connect(g).connect(ctx.destination);
+    // An open context keeps the audio output live (a faint hiss), so let it go.
+    o.onended = () => ctx.close();
     o.start();
     o.stop(ctx.currentTime + 0.4);
   } catch {}
